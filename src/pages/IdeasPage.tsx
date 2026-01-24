@@ -3,7 +3,7 @@ import { useNotesContext } from "@/contexts/NotesContext";
 import NotesListPanel from "@/components/NotesListPanel";
 import NoteEditorFull from "@/components/NoteEditorFull";
 import { StickyNote } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface IdeasPageProps {
   initialNoteId?: string;
@@ -12,6 +12,7 @@ interface IdeasPageProps {
 const IdeasPage = ({ initialNoteId }: IdeasPageProps) => {
   const { notes, createNote, updateNote, deleteNote } = useNotesContext();
   const [activeNoteId, setActiveNoteId] = useState<string | null>(initialNoteId || null);
+  const [focusMode, setFocusMode] = useState(false);
 
   const activeNote = notes.find((n) => n.id === activeNoteId);
 
@@ -41,23 +42,48 @@ const IdeasPage = ({ initialNoteId }: IdeasPageProps) => {
     deleteNote(id);
   };
 
+  // Keyboard shortcut for focus mode (Escape to exit)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && focusMode) {
+        setFocusMode(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [focusMode]);
+
   return (
-    <div className="flex-1 h-full flex overflow-hidden">
-      {/* Notes List */}
-      <NotesListPanel
-        title="All Ideas"
-        notes={notes}
-        activeNoteId={activeNoteId}
-        onSelectNote={setActiveNoteId}
-        onDeleteNote={handleDeleteNote}
-        onCreateNote={handleCreateNote}
-      />
+    <div className="flex-1 h-full flex overflow-hidden relative">
+      {/* Notes List - hidden in focus mode */}
+      <AnimatePresence>
+        {!focusMode && (
+          <motion.div
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: "auto", opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="overflow-hidden"
+          >
+            <NotesListPanel
+              title="All Ideas"
+              notes={notes}
+              activeNoteId={activeNoteId}
+              onSelectNote={setActiveNoteId}
+              onDeleteNote={handleDeleteNote}
+              onCreateNote={handleCreateNote}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Editor */}
       {activeNote ? (
         <NoteEditorFull
           note={activeNote}
           onUpdate={(updates) => updateNote(activeNote.id, updates)}
+          focusMode={focusMode}
+          onToggleFocusMode={() => setFocusMode(!focusMode)}
         />
       ) : (
         <div className="flex-1 flex items-center justify-center bg-background">
