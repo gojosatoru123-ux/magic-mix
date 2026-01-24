@@ -185,12 +185,33 @@ const MindMap = ({ nodes, connections, onChange, title = "Mind Map", onTitleChan
     };
   };
 
-  // Smooth bezier path for connections
-  const getBezierPath = (from: { x: number; y: number }, to: { x: number; y: number }) => {
+  // Smooth bezier path for connections - creates natural curved lines
+  const getBezierPath = (from: { x: number; y: number }, to: { x: number; y: number }, fromHandle?: 'top' | 'right' | 'bottom' | 'left', toHandle?: 'top' | 'right' | 'bottom' | 'left') => {
     const dx = to.x - from.x;
-    const controlOffset = Math.min(Math.abs(dx) * 0.5, 80);
+    const dy = to.y - from.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
     
-    return `M ${from.x} ${from.y} C ${from.x + controlOffset} ${from.y}, ${to.x - controlOffset} ${to.y}, ${to.x} ${to.y}`;
+    // Dynamic curvature based on distance - more curve for longer connections
+    const curvature = Math.min(distance * 0.4, 120);
+    
+    // Control points that create smooth, natural curves
+    let cp1x = from.x;
+    let cp1y = from.y;
+    let cp2x = to.x;
+    let cp2y = to.y;
+    
+    // Adjust control points based on connection direction for smooth S-curves
+    if (Math.abs(dx) > Math.abs(dy)) {
+      // Horizontal-ish connection
+      cp1x = from.x + (dx > 0 ? curvature : -curvature);
+      cp2x = to.x + (dx > 0 ? -curvature : curvature);
+    } else {
+      // Vertical-ish connection
+      cp1y = from.y + (dy > 0 ? curvature : -curvature);
+      cp2y = to.y + (dy > 0 ? -curvature : curvature);
+    }
+    
+    return `M ${from.x} ${from.y} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${to.x} ${to.y}`;
   };
 
   const handleMouseDown = (e: React.MouseEvent, nodeId: string) => {
