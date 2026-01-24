@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
-import { X, Plus, MoreHorizontal, Star, Share2, Clock } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { X, Plus, MoreHorizontal, Star, Share2, Clock, Focus, Minimize2 } from "lucide-react";
 import NotionEditor from "./NotionEditor";
 import FloatingToolbar from "./FloatingToolbar";
 import { Note, NoteBlock } from "@/contexts/NotesContext";
@@ -9,6 +9,8 @@ import { format } from "date-fns";
 interface NoteEditorFullProps {
   note: Note;
   onUpdate: (updates: Partial<Note>) => void;
+  focusMode?: boolean;
+  onToggleFocusMode?: () => void;
 }
 
 const tagColors = [
@@ -20,7 +22,7 @@ const tagColors = [
   { name: "gray", bg: "bg-muted", text: "text-muted-foreground", border: "border-border" },
 ];
 
-const NoteEditorFull = ({ note, onUpdate }: NoteEditorFullProps) => {
+const NoteEditorFull = ({ note, onUpdate, focusMode = false, onToggleFocusMode }: NoteEditorFullProps) => {
   const [newTagInput, setNewTagInput] = useState("");
   const [showTagInput, setShowTagInput] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
@@ -53,12 +55,40 @@ const NoteEditorFull = ({ note, onUpdate }: NoteEditorFullProps) => {
   };
 
   return (
-    <div className="flex-1 h-full bg-card flex flex-col overflow-hidden">
+    <motion.div 
+      className={`flex-1 h-full bg-card flex flex-col overflow-hidden transition-all duration-300 ${
+        focusMode ? 'fixed inset-0 z-50 bg-background' : ''
+      }`}
+      layout
+    >
       {/* Floating Toolbar - appears on text selection */}
       <FloatingToolbar />
 
+      {/* Focus mode backdrop */}
+      <AnimatePresence>
+        {focusMode && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-background -z-10"
+          />
+        )}
+      </AnimatePresence>
+
       {/* Top Bar */}
-      <div className="flex items-center justify-between px-6 py-3 border-b border-border bg-card/50 backdrop-blur-sm">
+      <motion.div 
+        className={`flex items-center justify-between px-6 py-3 border-b border-border transition-all duration-300 ${
+          focusMode 
+            ? 'bg-transparent border-transparent opacity-0 hover:opacity-100 absolute top-0 left-0 right-0 z-10' 
+            : 'bg-card/50 backdrop-blur-sm'
+        }`}
+        initial={false}
+        animate={{ 
+          opacity: focusMode ? 0 : 1,
+        }}
+        whileHover={{ opacity: 1 }}
+      >
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <Clock className="w-3 h-3" />
@@ -66,6 +96,20 @@ const NoteEditorFull = ({ note, onUpdate }: NoteEditorFullProps) => {
           </div>
         </div>
         <div className="flex items-center gap-1">
+          {/* Focus Mode Toggle */}
+          <motion.button
+            onClick={onToggleFocusMode}
+            className={`p-2 rounded-lg transition-colors ${
+              focusMode 
+                ? 'bg-primary/10 text-primary' 
+                : 'hover:bg-muted text-muted-foreground'
+            }`}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            title={focusMode ? "Exit focus mode (Esc)" : "Enter focus mode"}
+          >
+            {focusMode ? <Minimize2 className="w-4 h-4" /> : <Focus className="w-4 h-4" />}
+          </motion.button>
           <motion.button
             onClick={() => setIsFavorite(!isFavorite)}
             className={`p-2 rounded-lg transition-colors ${isFavorite ? 'text-yellow-500' : 'hover:bg-muted text-muted-foreground'}`}
@@ -89,11 +133,34 @@ const NoteEditorFull = ({ note, onUpdate }: NoteEditorFullProps) => {
             <MoreHorizontal className="w-4 h-4" />
           </motion.button>
         </div>
-      </div>
+      </motion.div>
 
       {/* Content Area */}
-      <div className="flex-1 overflow-y-auto scrollbar-thin">
-        <div className="max-w-4xl mx-auto p-6 md:p-10">
+      <div className={`flex-1 overflow-y-auto scrollbar-thin ${focusMode ? 'pt-8' : ''}`}>
+        <motion.div 
+          className={`mx-auto p-6 md:p-10 transition-all duration-300 ${
+            focusMode 
+              ? 'max-w-3xl pt-16' 
+              : 'max-w-4xl'
+          }`}
+          layout
+        >
+          {/* Focus mode exit hint */}
+          <AnimatePresence>
+            {focusMode && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="text-center mb-8"
+              >
+                <span className="text-xs text-muted-foreground/50 bg-muted/50 px-3 py-1.5 rounded-full">
+                  Focus mode • Press <kbd className="px-1.5 py-0.5 bg-background rounded text-[10px] font-mono">Esc</kbd> to exit
+                </span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Title */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -104,81 +171,109 @@ const NoteEditorFull = ({ note, onUpdate }: NoteEditorFullProps) => {
               type="text"
               value={note.title}
               onChange={(e) => onUpdate({ title: e.target.value })}
-              className="w-full text-4xl md:text-5xl font-bold text-foreground bg-transparent border-none outline-none placeholder:text-muted-foreground/30 tracking-tight"
+              className={`w-full font-bold text-foreground bg-transparent border-none outline-none placeholder:text-muted-foreground/30 tracking-tight transition-all duration-300 ${
+                focusMode 
+                  ? 'text-5xl md:text-6xl text-center' 
+                  : 'text-4xl md:text-5xl'
+              }`}
               placeholder="Untitled"
             />
           </motion.div>
 
-          {/* Tags */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.05 }}
-            className="flex items-center gap-2 mb-8 flex-wrap"
-          >
-            {note.tags.map((tag, index) => (
-              <motion.span
-                key={tag.id}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all hover:shadow-sm ${getTagStyle(tag.color)}`}
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: index * 0.05 }}
-                whileHover={{ scale: 1.05 }}
+          {/* Tags - hidden in focus mode */}
+          <AnimatePresence>
+            {!focusMode && (
+              <motion.div
+                initial={{ opacity: 0, y: 10, height: 0 }}
+                animate={{ opacity: 1, y: 0, height: "auto" }}
+                exit={{ opacity: 0, y: -10, height: 0 }}
+                transition={{ delay: 0.05 }}
+                className="flex items-center gap-2 mb-8 flex-wrap overflow-hidden"
               >
-                <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60" />
-                {tag.label}
-                <button
-                  onClick={() => handleRemoveTag(tag.id)}
-                  className="ml-0.5 hover:text-destructive transition-colors"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </motion.span>
-            ))}
-            
-            {showTagInput ? (
-              <motion.input
-                initial={{ width: 0, opacity: 0 }}
-                animate={{ width: "auto", opacity: 1 }}
-                type="text"
-                value={newTagInput}
-                onChange={(e) => setNewTagInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleAddTag();
-                  if (e.key === "Escape") setShowTagInput(false);
-                }}
-                onBlur={() => {
-                  if (newTagInput) handleAddTag();
-                  else setShowTagInput(false);
-                }}
-                autoFocus
-                className="px-3 py-1.5 text-xs border-2 border-primary rounded-full outline-none bg-transparent min-w-[80px] focus:ring-2 focus:ring-primary/20"
-                placeholder="Tag name"
-              />
-            ) : (
-              <motion.button
-                onClick={() => setShowTagInput(true)}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border border-dashed border-muted-foreground/30 text-muted-foreground hover:border-primary hover:text-primary hover:bg-primary/5 transition-all"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Plus className="w-3 h-3" />
-                Add tag
-              </motion.button>
+                {note.tags.map((tag, index) => (
+                  <motion.span
+                    key={tag.id}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all hover:shadow-sm ${getTagStyle(tag.color)}`}
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: index * 0.05 }}
+                    whileHover={{ scale: 1.05 }}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-current opacity-60" />
+                    {tag.label}
+                    <button
+                      onClick={() => handleRemoveTag(tag.id)}
+                      className="ml-0.5 hover:text-destructive transition-colors"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </motion.span>
+                ))}
+                
+                {showTagInput ? (
+                  <motion.input
+                    initial={{ width: 0, opacity: 0 }}
+                    animate={{ width: "auto", opacity: 1 }}
+                    type="text"
+                    value={newTagInput}
+                    onChange={(e) => setNewTagInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleAddTag();
+                      if (e.key === "Escape") setShowTagInput(false);
+                    }}
+                    onBlur={() => {
+                      if (newTagInput) handleAddTag();
+                      else setShowTagInput(false);
+                    }}
+                    autoFocus
+                    className="px-3 py-1.5 text-xs border-2 border-primary rounded-full outline-none bg-transparent min-w-[80px] focus:ring-2 focus:ring-primary/20"
+                    placeholder="Tag name"
+                  />
+                ) : (
+                  <motion.button
+                    onClick={() => setShowTagInput(true)}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border border-dashed border-muted-foreground/30 text-muted-foreground hover:border-primary hover:text-primary hover:bg-primary/5 transition-all"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <Plus className="w-3 h-3" />
+                    Add tag
+                  </motion.button>
+                )}
+              </motion.div>
             )}
-          </motion.div>
+          </AnimatePresence>
 
           {/* Notion-like Editor */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
+            className={focusMode ? 'text-lg leading-relaxed' : ''}
           >
             <NotionEditor blocks={note.blocks} onChange={handleBlocksChange} />
           </motion.div>
-        </div>
+        </motion.div>
       </div>
-    </div>
+
+      {/* Focus mode floating exit button */}
+      <AnimatePresence>
+        {focusMode && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            onClick={onToggleFocusMode}
+            className="fixed bottom-6 right-6 p-3 rounded-full bg-card border border-border shadow-lg hover:bg-muted transition-colors z-50"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            title="Exit focus mode"
+          >
+            <Minimize2 className="w-5 h-5 text-muted-foreground" />
+          </motion.button>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 };
 
