@@ -24,6 +24,7 @@ export interface MindMapConnection {
   id: string;
   from: string;
   to: string;
+  label?: string;
 }
 
 interface MindMapProps {
@@ -142,6 +143,13 @@ const MindMap = ({ nodes, connections, onChange, title = "Mind Map", onTitleChan
     onChange(nodes, connections.filter((conn) => conn.id !== id));
   }, [nodes, connections, onChange]);
 
+  const updateConnection = useCallback((id: string, updates: Partial<MindMapConnection>) => {
+    onChange(
+      nodes,
+      connections.map((conn) => (conn.id === id ? { ...conn, ...updates } : conn))
+    );
+  }, [nodes, connections, onChange]);
+
   // Calculate node dimensions based on text content
   const getNodeDimensions = (node: MindMapNode) => {
     const shape = node.shape || 'rectangle';
@@ -186,32 +194,69 @@ const MindMap = ({ nodes, connections, onChange, title = "Mind Map", onTitleChan
   };
 
   // Smooth bezier path for connections - creates natural curved lines
-  const getBezierPath = (from: { x: number; y: number }, to: { x: number; y: number }, fromHandle?: 'top' | 'right' | 'bottom' | 'left', toHandle?: 'top' | 'right' | 'bottom' | 'left') => {
+  const getBezierCurve = (from: { x: number; y: number }, to: { x: number; y: number }) => {
     const dx = to.x - from.x;
     const dy = to.y - from.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
-    
+
     // Dynamic curvature based on distance - more curve for longer connections
     const curvature = Math.min(distance * 0.4, 120);
-    
+
     // Control points that create smooth, natural curves
-    let cp1x = from.x;
-    let cp1y = from.y;
-    let cp2x = to.x;
-    let cp2y = to.y;
-    
+    let cp1 = { x: from.x, y: from.y };
+    let cp2 = { x: to.x, y: to.y };
+
     // Adjust control points based on connection direction for smooth S-curves
     if (Math.abs(dx) > Math.abs(dy)) {
       // Horizontal-ish connection
-      cp1x = from.x + (dx > 0 ? curvature : -curvature);
-      cp2x = to.x + (dx > 0 ? -curvature : curvature);
+      cp1 = { x: from.x + (dx > 0 ? curvature : -curvature), y: from.y };
+      cp2 = { x: to.x + (dx > 0 ? -curvature : curvature), y: to.y };
     } else {
       // Vertical-ish connection
-      cp1y = from.y + (dy > 0 ? curvature : -curvature);
-      cp2y = to.y + (dy > 0 ? -curvature : curvature);
+      cp1 = { x: from.x, y: from.y + (dy > 0 ? curvature : -curvature) };
+      cp2 = { x: to.x, y: to.y + (dy > 0 ? -curvature : curvature) };
     }
-    
-    return `M ${from.x} ${from.y} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${to.x} ${to.y}`;
+
+    const d = `M ${from.x} ${from.y} C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${to.x} ${to.y}`;
+    return { d, cp1, cp2 };
+  };
+
+  const getPointOnCubicBezier = (
+    t: number,
+    p0: { x: number; y: number },
+    p1: { x: number; y: number },
+    p2: { x: number; y: number },
+    p3: { x: number; y: number }
+  ) => {
+    const u = 1 - t;
+    const tt = t * t;
+    const uu = u * u;
+    const uuu = uu * u;
+    const ttt = tt * t;
+
+    const x = uuu * p0.x + 3 * uu * t * p1.x + 3 * u * tt * p2.x + ttt * p3.x;
+    const y = uuu * p0.y + 3 * uu * t * p1.y + 3 * u * tt * p2.y + ttt * p3.y;
+    return { x, y };
+  };
+
+  const getTangentOnCubicBezier = (
+    t: number,
+    p0: { x: number; y: number },
+    p1: { x: number; y: number },
+    p2: { x: number; y: number },
+    p3: { x: number; y: number }
+  ) => {
+    // B'(t) = 3(1-t)^2(p1-p0) + 6(1-t)t(p2-p1) + 3t^2(p3-p2)
+    const u = 1 - t;
+    const x =
+      3 * u * u * (p1.x - p0.x) +
+      6 * u * t * (p2.x - p1.x) +
+      3 * t * t * (p3.x - p2.x);
+    const y =
+      3 * u * u * (p1.y - p0.y) +
+      6 * u * t * (p2.y - p1.y) +
+      3 * t * t * (p3.y - p2.y);
+    return { x, y };
   };
 
   const handleMouseDown = (e: React.MouseEvent, nodeId: string) => {
@@ -334,41 +379,102 @@ const MindMap = ({ nodes, connections, onChange, title = "Mind Map", onTitleChan
         });
       });
 
-      const path = getBezierPath(bestFrom, bestTo);
-      const midPoint = { x: (bestFrom.x + bestTo.x) / 2, y: (bestFrom.y + bestTo.y) / 2 };
+      const curve = getBezierCurve(bestFrom, bestTo);
+      const t = 0.5;
+      const labelBase = getPointOnCubicBezier(t, bestFrom, curve.cp1, curve.cp2, bestTo);
+      const tangent = getTangentOnCubicBezier(t, bestFrom, curve.cp1, curve.cp2, bestTo);
+      const tangentLen = Math.hypot(tangent.x, tangent.y) || 1;
+      const nx = -tangent.y / tangentLen;
+      const ny = tangent.x / tangentLen;
+      const labelPos = { x: labelBase.x + nx * 12, y: labelBase.y + ny * 12 };
       const isHovered = hoveredConnection === conn.id;
+
+      const labelText = (conn.label || "").trim();
+      const showLabel = labelText.length > 0 || isHovered;
+      const displayLabel = labelText.length > 0 ? labelText : "Add label";
+      const approxTextWidth = Math.min(220, Math.max(44, displayLabel.length * 7 + 18));
+      const labelId = `mm-conn-label-${conn.id}`;
 
       return (
         <g 
           key={conn.id} 
-          className="cursor-pointer" 
+          className="mindmap-connection cursor-pointer" 
           onMouseEnter={() => setHoveredConnection(conn.id)}
           onMouseLeave={() => setHoveredConnection(null)}
-          onClick={() => deleteConnection(conn.id)}
+          onMouseDown={(e) => e.stopPropagation()}
         >
           {/* Hit area */}
-          <path d={path} stroke="transparent" strokeWidth="16" fill="none" />
+          <path d={curve.d} stroke="transparent" strokeWidth="16" fill="none" />
           {/* Main line */}
           <path
-            d={path}
-            stroke={isHovered ? "hsl(350 65% 55%)" : "hsl(var(--primary))"}
+            d={curve.d}
+            stroke={isHovered ? "hsl(var(--accent))" : "hsl(var(--primary))"}
             strokeWidth="2"
             fill="none"
             className="transition-colors duration-200"
             strokeLinecap="round"
+            markerEnd={isHovered ? "url(#mindmap-arrow-hover)" : "url(#mindmap-arrow)"}
           />
-          {/* Small connection dots */}
+
+          {/* Direction start dot */}
           <circle cx={bestFrom.x} cy={bestFrom.y} r="3" fill="hsl(var(--primary))" />
-          <circle cx={bestTo.x} cy={bestTo.y} r="3" fill="hsl(var(--primary))" />
+
+          {/* Connection label */}
+          {showLabel && (
+            <g
+              aria-label={displayLabel}
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                const next = window.prompt("Connection label", labelText);
+                if (next === null) return;
+                updateConnection(conn.id, { label: next.trim() });
+              }}
+            >
+              <rect
+                x={labelPos.x - approxTextWidth / 2}
+                y={labelPos.y - 10}
+                width={approxTextWidth}
+                height={20}
+                rx={10}
+                fill="hsl(var(--card))"
+                stroke="hsl(var(--border))"
+                strokeWidth={1}
+                opacity={labelText.length > 0 ? 0.98 : 0.85}
+              />
+              <text
+                id={labelId}
+                x={labelPos.x}
+                y={labelPos.y + 4}
+                textAnchor="middle"
+                className="select-none"
+                style={{
+                  fill: "hsl(var(--foreground))",
+                  fontSize: 11,
+                  fontWeight: 500,
+                }}
+              >
+                {displayLabel}
+              </text>
+            </g>
+          )}
+
           {/* Delete indicator on hover */}
           {isHovered && (
-            <g>
-              <circle cx={midPoint.x} cy={midPoint.y} r="10" fill="hsl(350 65% 55%)" />
+            <g
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                deleteConnection(conn.id);
+              }}
+            >
+              <circle cx={labelPos.x} cy={labelPos.y} r="10" fill="hsl(var(--destructive))" />
               <text
-                x={midPoint.x}
-                y={midPoint.y + 4}
+                x={labelPos.x}
+                y={labelPos.y + 4}
                 textAnchor="middle"
-                className="text-[11px] fill-white font-bold pointer-events-none"
+                className="text-[11px] font-bold pointer-events-none select-none"
+                style={{ fill: "hsl(var(--destructive-foreground))" }}
               >
                 ×
               </text>
@@ -387,17 +493,18 @@ const MindMap = ({ nodes, connections, onChange, title = "Mind Map", onTitleChan
     
     const handles = getHandlePositions(fromNode);
     const from = connectingFromHandle ? handles[connectingFromHandle] : getNodeCenter(fromNode);
-    const path = getBezierPath(from, mousePos);
+    const curve = getBezierCurve(from, mousePos);
 
     return (
       <path
-        d={path}
+        d={curve.d}
         stroke="hsl(var(--primary))"
         strokeWidth="2"
         fill="none"
         strokeDasharray="6,4"
         opacity="0.7"
         strokeLinecap="round"
+        markerEnd="url(#mindmap-arrow)"
       />
     );
   };
@@ -781,12 +888,36 @@ const MindMap = ({ nodes, connections, onChange, title = "Mind Map", onTitleChan
             height="20000"
             style={{ 
               overflow: 'visible',
-              left: '-10000px',
-              top: '-10000px',
-              pointerEvents: 'none',
+              left: 0,
+              top: 0,
             }}
           >
-            <g style={{ pointerEvents: 'auto' }}>
+            <defs>
+              <marker
+                id="mindmap-arrow"
+                viewBox="0 0 10 10"
+                refX="9"
+                refY="5"
+                markerWidth="7"
+                markerHeight="7"
+                orient="auto"
+              >
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="hsl(var(--primary))" />
+              </marker>
+              <marker
+                id="mindmap-arrow-hover"
+                viewBox="0 0 10 10"
+                refX="9"
+                refY="5"
+                markerWidth="7"
+                markerHeight="7"
+                orient="auto"
+              >
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="hsl(var(--accent))" />
+              </marker>
+            </defs>
+
+            <g>
               {renderConnections()}
               {renderConnectingLine()}
             </g>
