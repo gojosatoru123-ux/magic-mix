@@ -1,0 +1,190 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* Elephant Notes App Design System */
+
+@layer base {
+  :root {
+    --background: 45 20% 97%;
+    --foreground: 200 15% 20%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 200 15% 20%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 200 15% 20%;
+
+    --primary: 160 25% 45%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 45 30% 95%;
+    --secondary-foreground: 200 15% 25%;
+
+    --muted: 45 15% 92%;
+    --muted-foreground: 200 10% 50%;
+
+    --accent: 42 85% 55%;
+    --accent-foreground: 200 15% 15%;
+
+    --destructive: 0 65% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 45 15% 88%;
+    --input: 45 15% 88%;
+    --ring: 160 25% 45%;
+
+    --radius: 0.75rem;
+
+    /* Elephant specific colors */
+    --sage-50: 150 20% 97%;
+    --sage-100: 150 18% 92%;
+    --sage-200: 155 16% 85%;
+    --sage-300: 158 15% 70%;
+    --sage-400: 160 18% 55%;
+    --sage-500: 162 22% 42%;
+    --sage-600: 165 25% 35%;
+    --sage-700: 168 28% 28%;
+    --sage-800: 170 30% 22%;
+    --sage-900: 172 32% 16%;
+
+    --gold-400: 42 80% 50%;
+    --gold-500: 40 85% 45%;
+
+    --sidebar-background: 165 25% 35%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 0 0% 100%;
+    --sidebar-primary-foreground: 165 25% 35%;
+    --sidebar-accent: 165 20% 40%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 165 20% 40%;
+    --sidebar-ring: 42 80% 50%;
+    
+    /* Gradients */
+    --gradient-sidebar: linear-gradient(180deg, hsl(158 20% 45%) 0%, hsl(168 28% 30%) 100%);
+    --gradient-gold: linear-gradient(135deg, hsl(42 85% 55%) 0%, hsl(38 80% 48%) 100%);
+    
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 hsl(200 15% 20% / 0.05);
+    --shadow-md: 0 4px 6px -1px hsl(200 15% 20% / 0.08), 0 2px 4px -2px hsl(200 15% 20% / 0.05);
+    --shadow-lg: 0 10px 15px -3px hsl(200 15% 20% / 0.08), 0 4px 6px -4px hsl(200 15% 20% / 0.05);
+    --shadow-xl: 0 20px 25px -5px hsl(200 15% 20% / 0.1), 0 8px 10px -6px hsl(200 15% 20% / 0.05);
+    --shadow-card: 0 4px 20px -2px hsl(200 15% 20% / 0.1);
+  }
+
+  .dark {
+    --background: 200 15% 10%;
+    --foreground: 45 20% 95%;
+    --card: 200 15% 12%;
+    --card-foreground: 45 20% 95%;
+    --popover: 200 15% 12%;
+    --popover-foreground: 45 20% 95%;
+    --primary: 160 25% 50%;
+    --primary-foreground: 200 15% 10%;
+    --secondary: 200 15% 18%;
+    --secondary-foreground: 45 20% 95%;
+    --muted: 200 15% 20%;
+    --muted-foreground: 45 15% 60%;
+    --accent: 42 85% 55%;
+    --accent-foreground: 200 15% 10%;
+    --destructive: 0 65% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 200 15% 22%;
+    --input: 200 15% 22%;
+    --ring: 160 25% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+    overscroll-behavior: none;
+  }
+
+  html, body, #root {
+    overflow: hidden;
+    height: 100%;
+    width: 100%;
+    overscroll-behavior: none;
+  }
+}
+
+@layer components {
+  .sidebar-gradient {
+    background: var(--gradient-sidebar);
+  }
+
+  .gold-gradient {
+    background: var(--gradient-gold);
+  }
+
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+
+  .shadow-elegant {
+    box-shadow: var(--shadow-lg);
+  }
+
+  .note-item {
+    @apply transition-all duration-200 ease-out;
+  }
+
+  .note-item:hover {
+    @apply bg-muted/50;
+  }
+
+  .note-item.active {
+    @apply bg-secondary border-l-2 border-primary;
+  }
+
+  .nav-link {
+    @apply flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 text-white/80 hover:text-white hover:bg-white/10;
+  }
+
+  .nav-link.active {
+    @apply bg-white/15 text-white;
+  }
+
+  .tag-badge {
+    @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors;
+  }
+
+  .file-item {
+    @apply flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors cursor-pointer;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 3px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+  }
+}
