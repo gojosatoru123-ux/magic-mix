@@ -33,7 +33,7 @@ import {
   GitBranch,
   Kanban,
   Star,
-  Clock,
+  Lightbulb,
   Globe,
   Database,
   Share2,
@@ -46,9 +46,11 @@ import {
   Volume2,
   ZoomIn,
 } from "lucide-react";
-import { NoteBlock } from "@/contexts/NotesContext";
+import { NoteBlock, FlashcardItem } from "@/contexts/NotesContext";
 import ImageLightbox from "./ImageLightbox";
 import MindMap from "./MindMap";
+import FlashcardBlock from "./FlashcardBlock";
+import FlashcardStudyMode from "./FlashcardStudyMode";
 
 interface NotionEditorProps {
   blocks: NoteBlock[];
@@ -85,6 +87,7 @@ const blockTypes = [
   { type: "embed" as const, icon: Globe, label: "Embed", description: "External embed", category: "advanced" },
   { type: "database" as const, icon: Database, label: "Database", description: "Mini database", category: "advanced" },
   { type: "mindmap" as const, icon: Share2, label: "Mind Map", description: "Interactive mind map", category: "advanced" },
+  { type: "flashcard" as const, icon: Lightbulb, label: "Flashcards", description: "Quick revision cards", category: "advanced" },
 ] as const;
 
 const progressColors = [
@@ -105,6 +108,7 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxImages, setLightboxImages] = useState<{ url: string; caption?: string }[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [studyModeBlock, setStudyModeBlock] = useState<NoteBlock | null>(null);
   const blockRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const contentRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
@@ -1365,6 +1369,19 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
           </div>
         );
 
+      case "flashcard":
+        return (
+          <div className="py-2">
+            <FlashcardBlock
+              flashcards={block.flashcards || []}
+              title={block.content || "Flashcards"}
+              onChange={(flashcards) => updateBlock(block.id, { flashcards })}
+              onTitleChange={(title) => updateBlock(block.id, { content: title })}
+              onOpenStudyMode={() => setStudyModeBlock(block)}
+            />
+          </div>
+        );
+
       default:
         return renderEditableContent(block);
     }
@@ -1573,6 +1590,9 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
                                 } else if (bt.type === "mindmap") {
                                   baseUpdate.mindMapNodes = [{ id: crypto.randomUUID(), text: "Central Idea", x: 150, y: 150, color: "bg-blue-500" }];
                                   baseUpdate.mindMapConnections = [];
+                                } else if (bt.type === "flashcard") {
+                                  baseUpdate.flashcards = [];
+                                  baseUpdate.content = "Flashcards";
                                 }
                                 
                                 updateBlock(block.id, baseUpdate);
@@ -1640,6 +1660,17 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
         currentIndex={lightboxIndex}
         onNavigate={setLightboxIndex}
       />
+
+      {/* Flashcard Study Mode */}
+      <AnimatePresence>
+        {studyModeBlock && (
+          <FlashcardStudyMode
+            flashcards={studyModeBlock.flashcards || []}
+            title={studyModeBlock.content || "Flashcards"}
+            onClose={() => setStudyModeBlock(null)}
+          />
+        )}
+      </AnimatePresence>
     </>
   );
 };

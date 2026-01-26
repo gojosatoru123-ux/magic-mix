@@ -1,5 +1,5 @@
 import { createContext, useContext, ReactNode } from "react";
-import { useNotes, Note, Folder, NoteBlock } from "@/hooks/useNotes";
+import { useNotes, Note, Folder, NoteBlock, FlashcardItem } from "@/hooks/useNotes";
 
 interface NotesContextType {
   notes: Note[];
@@ -32,4 +32,4 @@ export const useNotesContext = () => {
   return context;
 };
 
-export type { Note, Folder, NoteBlock };
+export type { Note, Folder, NoteBlock, FlashcardItem };

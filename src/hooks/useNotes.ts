@@ -1,5 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 
+export interface FlashcardItem {
+  id: string;
+  content: string;
+  color: string;
+}
+
 export interface NoteBlock {
   id: string;
   type: 
@@ -8,7 +14,9 @@ export interface NoteBlock {
     | "code" | "callout" | "table" | "toggle" 
     | "image" | "bookmark" | "equation" | "progress" | "video" | "columns"
     // New block types
-    | "file" | "audio" | "timeline" | "kanban" | "rating" | "countdown" | "embed" | "database" | "mindmap" | "gallery";
+    | "file" | "audio" | "timeline" | "kanban" | "rating" | "countdown" | "embed" | "database" | "mindmap" | "gallery"
+    // Flashcard block type
+    | "flashcard";
   content: string;
   checked?: boolean;
   tableData?: string[][];
@@ -53,6 +61,8 @@ export interface NoteBlock {
     underline?: boolean;
   }[];
   mindMapConnections?: { id: string; from: string; to: string }[];
+  // Flashcard data
+  flashcards?: FlashcardItem[];
 }
 
 export interface Note {
