@@ -10,7 +10,8 @@ import {
   Settings,
   ChevronUp,
   ChevronDown,
-  Network
+  Network,
+  Layers
 } from "lucide-react";
 
 interface AppSidebarProps {
@@ -24,6 +25,7 @@ const AppSidebar = ({ activeNav, onNavChange }: AppSidebarProps) => {
   const navItems = [
     { id: "home", icon: Home, label: "Home" },
     { id: "calendar", icon: Calendar, label: "Calendar" },
+    { id: "flashcards", icon: Layers, label: "Flashcards" },
     { id: "graph", icon: Network, label: "Graph View" },
   ];
 

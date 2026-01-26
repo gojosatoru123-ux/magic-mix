@@ -7,6 +7,7 @@ import CalendarPage from "@/pages/CalendarPage";
 import IdeasPage from "@/pages/IdeasPage";
 import FolderPage from "@/pages/FolderPage";
 import GraphPage from "@/pages/GraphPage";
+import FlashcardsPage from "@/pages/FlashcardsPage";
 
 const Index = () => {
   const [activeNav, setActiveNav] = useState("home");
@@ -25,6 +26,8 @@ const Index = () => {
         return <HomePage onNavigate={handleNavigate} />;
       case "calendar":
         return <CalendarPage onNavigate={handleNavigate} />;
+      case "flashcards":
+        return <FlashcardsPage />;
       case "ideas":
         return <IdeasPage initialNoteId={selectedNoteId} />;
       case "folder":
