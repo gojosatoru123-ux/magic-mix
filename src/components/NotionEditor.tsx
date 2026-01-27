@@ -112,19 +112,12 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
   const blockRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const contentRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
-  // Store HTML content for each block to preserve formatting
-  const [blockHtmlContent, setBlockHtmlContent] = useState<Map<string, string>>(new Map());
-
   const updateBlock = (id: string, updates: Partial<NoteBlock>) => {
     onChange(
       blocks.map((block) =>
         block.id === id ? { ...block, ...updates } : block
       )
     );
-  };
-
-  const updateBlockHtml = (id: string, html: string) => {
-    setBlockHtmlContent(prev => new Map(prev).set(id, html));
   };
 
   const openLightbox = (images: { url: string; caption?: string }[], startIndex = 0) => {
@@ -232,13 +225,6 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
     const newBlocks = blocks.filter((b) => b.id !== id);
     onChange(newBlocks);
     
-    // Clean up HTML content
-    setBlockHtmlContent(prev => {
-      const next = new Map(prev);
-      next.delete(id);
-      return next;
-    });
-    
     if (index > 0) {
       setTimeout(() => {
         const prevBlock = newBlocks[index - 1];
@@ -283,10 +269,8 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
     }
   };
 
-  const handleContentChange = (block: NoteBlock, el: HTMLDivElement) => {
-    const html = el.innerHTML;
+  const handleContentInput = (block: NoteBlock, el: HTMLDivElement) => {
     const text = el.textContent || "";
-    updateBlockHtml(block.id, html);
     updateBlock(block.id, { content: text });
   };
 
@@ -348,15 +332,23 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
 
   // Render editable content with formatting preserved
   const renderEditableContent = (block: NoteBlock) => {
-    const storedHtml = blockHtmlContent.get(block.id);
-    
     return (
       <div
-        ref={(el) => el && contentRefs.current.set(block.id, el)}
+        ref={(el) => {
+          if (el) {
+            contentRefs.current.set(block.id, el);
+            // Only set initial content if element is empty and block has content
+            if (el.textContent === "" && block.content) {
+              el.textContent = block.content;
+            }
+          }
+        }}
         contentEditable
         suppressContentEditableWarning
-        onInput={(e) => handleContentChange(block, e.currentTarget)}
-        onBlur={(e) => handleContentChange(block, e.currentTarget)}
+        onInput={(e) => {
+          const text = e.currentTarget.textContent || "";
+          updateBlock(block.id, { content: text });
+        }}
         onKeyDown={(e) => handleKeyDown(e, block)}
         className={`outline-none py-1 transition-all ${getBlockStyle(block.type)} empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground/40`}
         data-placeholder={
@@ -369,8 +361,9 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
           block.type === "equation" ? "E = mc²" :
           "Type '/' for commands, or start writing..."
         }
-        dangerouslySetInnerHTML={storedHtml ? { __html: storedHtml } : undefined}
-      />
+      >
+        {block.content}
+      </div>
     );
   };
 
@@ -399,16 +392,23 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
               />
             </motion.div>
             <div
-              ref={(el) => el && contentRefs.current.set(block.id, el)}
+              ref={(el) => {
+                if (el) {
+                  contentRefs.current.set(block.id, el);
+                  if (el.textContent === "" && block.content) {
+                    el.textContent = block.content;
+                  }
+                }
+              }}
               contentEditable
               suppressContentEditableWarning
-              onInput={(e) => handleContentChange(block, e.currentTarget)}
-              onBlur={(e) => handleContentChange(block, e.currentTarget)}
+              onInput={(e) => handleContentInput(block, e.currentTarget)}
               onKeyDown={(e) => handleKeyDown(e, block)}
               className={`flex-1 outline-none transition-all ${block.checked ? 'line-through text-muted-foreground/50' : ''}`}
               data-placeholder="To-do"
-              dangerouslySetInnerHTML={blockHtmlContent.get(block.id) ? { __html: blockHtmlContent.get(block.id)! } : undefined}
-            />
+            >
+              {block.content}
+            </div>
           </div>
         );
 
@@ -417,16 +417,23 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
           <div className="flex items-start gap-3 py-1">
             <span className="mt-2.5 w-2 h-2 rounded-full bg-primary/60 flex-shrink-0" />
             <div
-              ref={(el) => el && contentRefs.current.set(block.id, el)}
+              ref={(el) => {
+                if (el) {
+                  contentRefs.current.set(block.id, el);
+                  if (el.textContent === "" && block.content) {
+                    el.textContent = block.content;
+                  }
+                }
+              }}
               contentEditable
               suppressContentEditableWarning
-              onInput={(e) => handleContentChange(block, e.currentTarget)}
-              onBlur={(e) => handleContentChange(block, e.currentTarget)}
+              onInput={(e) => handleContentInput(block, e.currentTarget)}
               onKeyDown={(e) => handleKeyDown(e, block)}
               className="flex-1 outline-none"
               data-placeholder="List item"
-              dangerouslySetInnerHTML={blockHtmlContent.get(block.id) ? { __html: blockHtmlContent.get(block.id)! } : undefined}
-            />
+            >
+              {block.content}
+            </div>
           </div>
         );
 
@@ -437,16 +444,23 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
               {getNumberedIndex(block.id)}.
             </span>
             <div
-              ref={(el) => el && contentRefs.current.set(block.id, el)}
+              ref={(el) => {
+                if (el) {
+                  contentRefs.current.set(block.id, el);
+                  if (el.textContent === "" && block.content) {
+                    el.textContent = block.content;
+                  }
+                }
+              }}
               contentEditable
               suppressContentEditableWarning
-              onInput={(e) => handleContentChange(block, e.currentTarget)}
-              onBlur={(e) => handleContentChange(block, e.currentTarget)}
+              onInput={(e) => handleContentInput(block, e.currentTarget)}
               onKeyDown={(e) => handleKeyDown(e, block)}
               className="flex-1 outline-none"
               data-placeholder="List item"
-              dangerouslySetInnerHTML={blockHtmlContent.get(block.id) ? { __html: blockHtmlContent.get(block.id)! } : undefined}
-            />
+            >
+              {block.content}
+            </div>
           </div>
         );
 
@@ -462,16 +476,23 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
                 <ChevronRight className="w-4 h-4 text-muted-foreground" />
               </motion.button>
               <div
-                ref={(el) => el && contentRefs.current.set(block.id, el)}
+                ref={(el) => {
+                  if (el) {
+                    contentRefs.current.set(block.id, el);
+                    if (el.textContent === "" && block.content) {
+                      el.textContent = block.content;
+                    }
+                  }
+                }}
                 contentEditable
                 suppressContentEditableWarning
-                onInput={(e) => handleContentChange(block, e.currentTarget)}
-                onBlur={(e) => handleContentChange(block, e.currentTarget)}
+                onInput={(e) => handleContentInput(block, e.currentTarget)}
                 onKeyDown={(e) => handleKeyDown(e, block)}
                 className="flex-1 outline-none font-medium"
                 data-placeholder="Toggle heading"
-                dangerouslySetInnerHTML={blockHtmlContent.get(block.id) ? { __html: blockHtmlContent.get(block.id)! } : undefined}
-              />
+              >
+                {block.content}
+              </div>
             </div>
             <AnimatePresence>
               {block.isExpanded && (
@@ -501,16 +522,23 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
           <div className="py-2 relative group/code">
             <div className={getBlockStyle("code")}>
               <div
-                ref={(el) => el && contentRefs.current.set(block.id, el)}
+                ref={(el) => {
+                  if (el) {
+                    contentRefs.current.set(block.id, el);
+                    if (el.textContent === "" && block.content) {
+                      el.textContent = block.content;
+                    }
+                  }
+                }}
                 contentEditable
                 suppressContentEditableWarning
-                onInput={(e) => handleContentChange(block, e.currentTarget)}
-                onBlur={(e) => handleContentChange(block, e.currentTarget)}
+                onInput={(e) => handleContentInput(block, e.currentTarget)}
                 onKeyDown={(e) => handleKeyDown(e, block)}
                 className="outline-none min-h-[60px]"
                 data-placeholder="// Write your code here..."
-                dangerouslySetInnerHTML={blockHtmlContent.get(block.id) ? { __html: blockHtmlContent.get(block.id)! } : undefined}
-              />
+              >
+                {block.content}
+              </div>
             </div>
             <motion.button
               onClick={() => copyCodeToClipboard(block.id, block.content)}
@@ -692,16 +720,23 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
           <div className="py-2">
             <div className={getBlockStyle("equation")}>
               <div
-                ref={(el) => el && contentRefs.current.set(block.id, el)}
+                ref={(el) => {
+                  if (el) {
+                    contentRefs.current.set(block.id, el);
+                    if (el.textContent === "" && block.content) {
+                      el.textContent = block.content;
+                    }
+                  }
+                }}
                 contentEditable
                 suppressContentEditableWarning
-                onInput={(e) => handleContentChange(block, e.currentTarget)}
-                onBlur={(e) => handleContentChange(block, e.currentTarget)}
+                onInput={(e) => handleContentInput(block, e.currentTarget)}
                 onKeyDown={(e) => handleKeyDown(e, block)}
                 className="outline-none"
                 data-placeholder="∑ (x² + y²) = z²"
-                dangerouslySetInnerHTML={blockHtmlContent.get(block.id) ? { __html: blockHtmlContent.get(block.id)! } : undefined}
-              />
+              >
+                {block.content}
+              </div>
             </div>
           </div>
         );
