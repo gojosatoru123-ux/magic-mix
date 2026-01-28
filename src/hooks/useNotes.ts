@@ -16,7 +16,9 @@ export interface NoteBlock {
     // New block types
     | "file" | "audio" | "timeline" | "kanban" | "rating" | "countdown" | "embed" | "database" | "mindmap" | "gallery"
     // Flashcard block type
-    | "flashcard";
+    | "flashcard"
+    // Chart block type
+    | "chart";
   content: string;
   checked?: boolean;
   tableData?: string[][];
@@ -63,6 +65,10 @@ export interface NoteBlock {
   mindMapConnections?: { id: string; from: string; to: string }[];
   // Flashcard data
   flashcards?: FlashcardItem[];
+  // Chart data
+  chartType?: "bar" | "line" | "pie" | "area" | "donut";
+  chartTitle?: string;
+  chartData?: { id: string; label: string; value: number; color: string }[];
 }
 
 export interface Note {
