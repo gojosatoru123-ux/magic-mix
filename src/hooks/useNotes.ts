@@ -66,8 +66,14 @@ export interface NoteBlock {
   // Flashcard data
   flashcards?: FlashcardItem[];
   // Chart data
-  chartType?: "bar" | "line" | "pie" | "area" | "donut";
+  chartType?: "bar" | "line" | "pie" | "area" | "donut" | "scatter" | "radar" | "stackedBar" | "horizontalBar" | "combo";
   chartTitle?: string;
+  chartColumns?: { id: string; key: string; type: "text" | "number" }[];
+  chartRows?: { id: string; cells: { [key: string]: string | number } }[];
+  chartXAxisKey?: string;
+  chartSelectedSeries?: string[];
+  chartSeriesColors?: { [key: string]: string };
+  // Legacy support
   chartData?: { id: string; label: string; value: number; color: string }[];
 }
 

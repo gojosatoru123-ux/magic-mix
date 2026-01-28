@@ -163,12 +163,20 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
       galleryImages: type === "gallery" ? [] : undefined,
       chartType: type === "chart" ? "bar" : undefined,
       chartTitle: type === "chart" ? "My Chart" : undefined,
-      chartData: type === "chart" ? [
-        { id: crypto.randomUUID(), label: "Item 1", value: 40, color: "#3b82f6" },
-        { id: crypto.randomUUID(), label: "Item 2", value: 65, color: "#22c55e" },
-        { id: crypto.randomUUID(), label: "Item 3", value: 30, color: "#a855f7" },
-        { id: crypto.randomUUID(), label: "Item 4", value: 80, color: "#f97316" },
+      chartColumns: type === "chart" ? [
+        { id: crypto.randomUUID(), key: "name", type: "text" },
+        { id: crypto.randomUUID(), key: "value", type: "number" },
       ] : undefined,
+      chartRows: type === "chart" ? [
+        { id: crypto.randomUUID(), cells: { name: "Jan", value: 400 } },
+        { id: crypto.randomUUID(), cells: { name: "Feb", value: 300 } },
+        { id: crypto.randomUUID(), cells: { name: "Mar", value: 200 } },
+        { id: crypto.randomUUID(), cells: { name: "Apr", value: 278 } },
+        { id: crypto.randomUUID(), cells: { name: "May", value: 189 } },
+      ] : undefined,
+      chartXAxisKey: type === "chart" ? "name" : undefined,
+      chartSelectedSeries: type === "chart" ? ["value"] : undefined,
+      chartSeriesColors: type === "chart" ? { value: "#3b82f6" } : undefined,
     };
     const index = blocks.findIndex((b) => b.id === afterId);
     const newBlocks = [...blocks];
@@ -1479,7 +1487,12 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
             <ChartBlock
               chartType={block.chartType || "bar"}
               chartTitle={block.chartTitle || "My Chart"}
-              chartData={block.chartData || []}
+              chartColumns={block.chartColumns}
+              chartRows={block.chartRows}
+              chartXAxisKey={block.chartXAxisKey}
+              chartSelectedSeries={block.chartSelectedSeries}
+              chartSeriesColors={block.chartSeriesColors}
+              chartData={block.chartData}
               onUpdate={(updates) => updateBlock(block.id, updates)}
             />
           </div>

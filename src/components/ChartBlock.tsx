@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   BarChart,
@@ -9,6 +9,13 @@ import {
   Pie,
   AreaChart,
   Area,
+  ScatterChart,
+  Scatter,
+  RadarChart,
+  Radar,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -16,6 +23,7 @@ import {
   ResponsiveContainer,
   Cell,
   Legend,
+  ComposedChart,
 } from "recharts";
 import {
   BarChart3,
@@ -27,179 +35,393 @@ import {
   Edit3,
   Check,
   X,
+  Columns,
+  ScatterChart as ScatterIcon,
+  Radar as RadarIcon,
 } from "lucide-react";
 
-interface ChartDataItem {
+interface ChartColumn {
   id: string;
-  label: string;
-  value: number;
-  color: string;
+  key: string;
+  type: "text" | "number";
 }
 
+interface ChartRow {
+  id: string;
+  cells: { [key: string]: string | number };
+}
+
+type ChartType = "bar" | "line" | "pie" | "area" | "donut" | "scatter" | "radar" | "stackedBar" | "horizontalBar" | "combo";
+
 interface ChartBlockProps {
-  chartType: "bar" | "line" | "pie" | "area" | "donut";
+  chartType: ChartType;
   chartTitle: string;
-  chartData: ChartDataItem[];
+  chartColumns?: ChartColumn[];
+  chartRows?: ChartRow[];
+  chartXAxisKey?: string;
+  chartSelectedSeries?: string[];
+  chartSeriesColors?: { [key: string]: string };
+  // Legacy support
+  chartData?: { id: string; label: string; value: number; color: string }[];
   onUpdate: (updates: {
-    chartType?: "bar" | "line" | "pie" | "area" | "donut";
+    chartType?: ChartType;
     chartTitle?: string;
-    chartData?: ChartDataItem[];
+    chartColumns?: ChartColumn[];
+    chartRows?: ChartRow[];
+    chartXAxisKey?: string;
+    chartSelectedSeries?: string[];
+    chartSeriesColors?: { [key: string]: string };
+    chartData?: { id: string; label: string; value: number; color: string }[];
   }) => void;
 }
 
-const chartColors = [
-  "#3b82f6", // blue
-  "#22c55e", // green
-  "#a855f7", // purple
-  "#f97316", // orange
-  "#ec4899", // pink
-  "#14b8a6", // teal
-  "#eab308", // yellow
-  "#ef4444", // red
+const defaultColors = [
+  "#3b82f6", "#22c55e", "#a855f7", "#f97316", "#ec4899",
+  "#14b8a6", "#eab308", "#ef4444", "#6366f1", "#84cc16",
 ];
 
-const ChartBlock = ({ chartType, chartTitle, chartData, onUpdate }: ChartBlockProps) => {
+const chartTypes: { type: ChartType; label: string }[] = [
+  { type: "bar", label: "Bar" },
+  { type: "line", label: "Line" },
+  { type: "area", label: "Area" },
+  { type: "pie", label: "Pie" },
+  { type: "donut", label: "Donut" },
+  { type: "horizontalBar", label: "H. Bar" },
+  { type: "combo", label: "Combo" },
+  { type: "scatter", label: "Scatter" },
+  { type: "radar", label: "Radar" },
+  { type: "stackedBar", label: "Stacked" },
+];
+
+const ChartBlock = ({
+  chartType,
+  chartTitle,
+  chartColumns,
+  chartRows,
+  chartXAxisKey,
+  chartSelectedSeries,
+  chartSeriesColors,
+  chartData,
+  onUpdate,
+}: ChartBlockProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editingTitle, setEditingTitle] = useState(chartTitle);
-  const [editingData, setEditingData] = useState<ChartDataItem[]>(chartData);
-  const [editingItemId, setEditingItemId] = useState<string | null>(null);
 
-  const chartTypes: { type: "bar" | "line" | "pie" | "area" | "donut"; icon: any; label: string }[] = [
-    { type: "bar", icon: BarChart3, label: "Bar" },
-    { type: "line", icon: LineChartIcon, label: "Line" },
-    { type: "pie", icon: PieChartIcon, label: "Pie" },
-    { type: "area", icon: AreaChartIcon, label: "Area" },
-    { type: "donut", icon: PieChartIcon, label: "Donut" },
-  ];
+  // Initialize or migrate from legacy format
+  const [columns, setColumns] = useState<ChartColumn[]>(() => {
+    if (chartColumns && chartColumns.length > 0) return chartColumns;
+    // Migrate from legacy
+    if (chartData && chartData.length > 0) {
+      return [
+        { id: "col-name", key: "name", type: "text" },
+        { id: "col-value", key: "value", type: "number" },
+      ];
+    }
+    return [
+      { id: crypto.randomUUID(), key: "name", type: "text" },
+      { id: crypto.randomUUID(), key: "value", type: "number" },
+    ];
+  });
 
-  const handleAddDataPoint = () => {
-    const newItem: ChartDataItem = {
+  const [rows, setRows] = useState<ChartRow[]>(() => {
+    if (chartRows && chartRows.length > 0) return chartRows;
+    // Migrate from legacy
+    if (chartData && chartData.length > 0) {
+      return chartData.map((item) => ({
+        id: item.id,
+        cells: { name: item.label, value: item.value },
+      }));
+    }
+    return [
+      { id: crypto.randomUUID(), cells: { name: "Jan", value: 400 } },
+      { id: crypto.randomUUID(), cells: { name: "Feb", value: 300 } },
+      { id: crypto.randomUUID(), cells: { name: "Mar", value: 200 } },
+      { id: crypto.randomUUID(), cells: { name: "Apr", value: 278 } },
+      { id: crypto.randomUUID(), cells: { name: "May", value: 189 } },
+    ];
+  });
+
+  const [xAxisKey, setXAxisKey] = useState<string>(
+    chartXAxisKey || columns.find((c) => c.type === "text")?.key || "name"
+  );
+
+  const [selectedSeries, setSelectedSeries] = useState<string[]>(() => {
+    if (chartSelectedSeries && chartSelectedSeries.length > 0) return chartSelectedSeries;
+    return columns.filter((c) => c.type === "number").map((c) => c.key);
+  });
+
+  const [seriesColors, setSeriesColors] = useState<{ [key: string]: string }>(() => {
+    if (chartSeriesColors) return chartSeriesColors;
+    const colors: { [key: string]: string } = {};
+    columns.filter((c) => c.type === "number").forEach((col, idx) => {
+      colors[col.key] = defaultColors[idx % defaultColors.length];
+    });
+    return colors;
+  });
+
+  // Get numeric columns for series selection
+  const numericColumns = columns.filter((c) => c.type === "number");
+  const textColumns = columns.filter((c) => c.type === "text");
+
+  const handleAddColumn = () => {
+    const newKey = `col${columns.length + 1}`;
+    const newCol: ChartColumn = {
       id: crypto.randomUUID(),
-      label: `Item ${editingData.length + 1}`,
-      value: Math.floor(Math.random() * 100) + 10,
-      color: chartColors[editingData.length % chartColors.length],
+      key: newKey,
+      type: "number",
     };
-    setEditingData([...editingData, newItem]);
+    setColumns([...columns, newCol]);
+    setSeriesColors({ ...seriesColors, [newKey]: defaultColors[columns.length % defaultColors.length] });
   };
 
-  const handleUpdateDataPoint = (id: string, field: "label" | "value" | "color", value: string | number) => {
-    setEditingData(
-      editingData.map((item) =>
-        item.id === id ? { ...item, [field]: field === "value" ? Number(value) : value } : item
-      )
-    );
+  const handleDeleteColumn = (id: string) => {
+    if (columns.length <= 2) return;
+    const col = columns.find((c) => c.id === id);
+    if (!col) return;
+
+    setColumns(columns.filter((c) => c.id !== id));
+    setRows(rows.map((row) => {
+      const newCells = { ...row.cells };
+      delete newCells[col.key];
+      return { ...row, cells: newCells };
+    }));
+    setSelectedSeries(selectedSeries.filter((s) => s !== col.key));
+    if (xAxisKey === col.key) {
+      const newXAxis = columns.find((c) => c.id !== id && c.type === "text")?.key || columns[0].key;
+      setXAxisKey(newXAxis);
+    }
   };
 
-  const handleDeleteDataPoint = (id: string) => {
-    if (editingData.length > 1) {
-      setEditingData(editingData.filter((item) => item.id !== id));
+  const handleUpdateColumnKey = (id: string, newKey: string) => {
+    const col = columns.find((c) => c.id === id);
+    if (!col || col.key === newKey) return;
+
+    const oldKey = col.key;
+    setColumns(columns.map((c) => (c.id === id ? { ...c, key: newKey } : c)));
+    setRows(rows.map((row) => {
+      const newCells = { ...row.cells };
+      newCells[newKey] = newCells[oldKey];
+      delete newCells[oldKey];
+      return { ...row, cells: newCells };
+    }));
+    if (selectedSeries.includes(oldKey)) {
+      setSelectedSeries(selectedSeries.map((s) => (s === oldKey ? newKey : s)));
+    }
+    if (xAxisKey === oldKey) setXAxisKey(newKey);
+    if (seriesColors[oldKey]) {
+      const newColors = { ...seriesColors, [newKey]: seriesColors[oldKey] };
+      delete newColors[oldKey];
+      setSeriesColors(newColors);
+    }
+  };
+
+  const handleAddRow = () => {
+    const newCells: { [key: string]: string | number } = {};
+    columns.forEach((col) => {
+      newCells[col.key] = col.type === "number" ? 0 : "";
+    });
+    setRows([...rows, { id: crypto.randomUUID(), cells: newCells }]);
+  };
+
+  const handleDeleteRow = (id: string) => {
+    if (rows.length <= 1) return;
+    setRows(rows.filter((r) => r.id !== id));
+  };
+
+  const handleUpdateCell = (rowId: string, key: string, value: string | number) => {
+    setRows(rows.map((row) =>
+      row.id === rowId ? { ...row, cells: { ...row.cells, [key]: value } } : row
+    ));
+  };
+
+  const handleToggleSeries = (key: string) => {
+    if (selectedSeries.includes(key)) {
+      if (selectedSeries.length > 1) {
+        setSelectedSeries(selectedSeries.filter((s) => s !== key));
+      }
+    } else {
+      setSelectedSeries([...selectedSeries, key]);
     }
   };
 
   const handleSave = () => {
     onUpdate({
       chartTitle: editingTitle,
-      chartData: editingData,
+      chartColumns: columns,
+      chartRows: rows,
+      chartXAxisKey: xAxisKey,
+      chartSelectedSeries: selectedSeries,
+      chartSeriesColors: seriesColors,
     });
     setIsEditing(false);
-    setEditingItemId(null);
   };
 
   const handleCancel = () => {
     setEditingTitle(chartTitle);
-    setEditingData(chartData);
+    if (chartColumns) setColumns(chartColumns);
+    if (chartRows) setRows(chartRows);
+    if (chartXAxisKey) setXAxisKey(chartXAxisKey);
+    if (chartSelectedSeries) setSelectedSeries(chartSelectedSeries);
+    if (chartSeriesColors) setSeriesColors(chartSeriesColors);
     setIsEditing(false);
-    setEditingItemId(null);
+  };
+
+  const getChartData = () => {
+    return rows.map((row) => {
+      const item: { [key: string]: string | number } = {};
+      columns.forEach((col) => {
+        item[col.key] = row.cells[col.key] ?? (col.type === "number" ? 0 : "");
+      });
+      return item;
+    });
   };
 
   const renderChart = () => {
-    const data = chartData.map((item) => ({
-      name: item.label,
-      value: item.value,
-      fill: item.color,
-    }));
+    const data = getChartData();
+    const activeSeries = selectedSeries.filter((s) => numericColumns.some((c) => c.key === s));
 
     switch (chartType) {
       case "bar":
         return (
-          <ResponsiveContainer width="100%" height={250}>
+          <ResponsiveContainer width="100%" height={280}>
             <BarChart data={data}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+              <XAxis dataKey={xAxisKey} stroke="hsl(var(--muted-foreground))" fontSize={12} />
               <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "hsl(var(--card))",
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: "8px",
-                }}
-              />
-              <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                {data.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.fill} />
-                ))}
-              </Bar>
+              <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+              <Legend />
+              {activeSeries.map((key) => (
+                <Bar key={key} dataKey={key} fill={seriesColors[key] || defaultColors[0]} radius={[4, 4, 0, 0]} />
+              ))}
+            </BarChart>
+          </ResponsiveContainer>
+        );
+
+      case "horizontalBar":
+        return (
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={data} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+              <YAxis dataKey={xAxisKey} type="category" stroke="hsl(var(--muted-foreground))" fontSize={12} width={80} />
+              <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+              <Legend />
+              {activeSeries.map((key) => (
+                <Bar key={key} dataKey={key} fill={seriesColors[key] || defaultColors[0]} radius={[0, 4, 4, 0]} />
+              ))}
+            </BarChart>
+          </ResponsiveContainer>
+        );
+
+      case "stackedBar":
+        return (
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey={xAxisKey} stroke="hsl(var(--muted-foreground))" fontSize={12} />
+              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+              <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+              <Legend />
+              {activeSeries.map((key) => (
+                <Bar key={key} dataKey={key} stackId="a" fill={seriesColors[key] || defaultColors[0]} />
+              ))}
             </BarChart>
           </ResponsiveContainer>
         );
 
       case "line":
         return (
-          <ResponsiveContainer width="100%" height={250}>
+          <ResponsiveContainer width="100%" height={280}>
             <LineChart data={data}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+              <XAxis dataKey={xAxisKey} stroke="hsl(var(--muted-foreground))" fontSize={12} />
               <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "hsl(var(--card))",
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: "8px",
-                }}
-              />
-              <Line
-                type="monotone"
-                dataKey="value"
-                stroke={chartData[0]?.color || "#3b82f6"}
-                strokeWidth={2}
-                dot={{ fill: chartData[0]?.color || "#3b82f6", strokeWidth: 2 }}
-              />
+              <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+              <Legend />
+              {activeSeries.map((key) => (
+                <Line key={key} type="monotone" dataKey={key} stroke={seriesColors[key] || defaultColors[0]} strokeWidth={2} dot={{ fill: seriesColors[key] || defaultColors[0] }} />
+              ))}
             </LineChart>
           </ResponsiveContainer>
         );
 
       case "area":
         return (
-          <ResponsiveContainer width="100%" height={250}>
+          <ResponsiveContainer width="100%" height={280}>
             <AreaChart data={data}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+              <XAxis dataKey={xAxisKey} stroke="hsl(var(--muted-foreground))" fontSize={12} />
               <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "hsl(var(--card))",
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: "8px",
-                }}
-              />
-              <Area
-                type="monotone"
-                dataKey="value"
-                stroke={chartData[0]?.color || "#3b82f6"}
-                fill={chartData[0]?.color || "#3b82f6"}
-                fillOpacity={0.3}
-              />
+              <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+              <Legend />
+              {activeSeries.map((key) => (
+                <Area key={key} type="monotone" dataKey={key} stroke={seriesColors[key] || defaultColors[0]} fill={seriesColors[key] || defaultColors[0]} fillOpacity={0.3} />
+              ))}
             </AreaChart>
+          </ResponsiveContainer>
+        );
+
+      case "scatter":
+        return (
+          <ResponsiveContainer width="100%" height={280}>
+            <ScatterChart>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey={activeSeries[0] || "value"} type="number" name={activeSeries[0]} stroke="hsl(var(--muted-foreground))" fontSize={12} />
+              <YAxis dataKey={activeSeries[1] || activeSeries[0] || "value"} type="number" name={activeSeries[1] || activeSeries[0]} stroke="hsl(var(--muted-foreground))" fontSize={12} />
+              <Tooltip cursor={{ strokeDasharray: "3 3" }} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+              <Legend />
+              <Scatter name="Data" data={data} fill={seriesColors[activeSeries[0]] || defaultColors[0]} />
+            </ScatterChart>
+          </ResponsiveContainer>
+        );
+
+      case "radar":
+        return (
+          <ResponsiveContainer width="100%" height={280}>
+            <RadarChart data={data}>
+              <PolarGrid stroke="hsl(var(--border))" />
+              <PolarAngleAxis dataKey={xAxisKey} stroke="hsl(var(--muted-foreground))" fontSize={12} />
+              <PolarRadiusAxis stroke="hsl(var(--muted-foreground))" fontSize={10} />
+              <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+              <Legend />
+              {activeSeries.map((key) => (
+                <Radar key={key} name={key} dataKey={key} stroke={seriesColors[key] || defaultColors[0]} fill={seriesColors[key] || defaultColors[0]} fillOpacity={0.3} />
+              ))}
+            </RadarChart>
+          </ResponsiveContainer>
+        );
+
+      case "combo":
+        return (
+          <ResponsiveContainer width="100%" height={280}>
+            <ComposedChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey={xAxisKey} stroke="hsl(var(--muted-foreground))" fontSize={12} />
+              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+              <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+              <Legend />
+              {activeSeries.map((key, idx) =>
+                idx % 2 === 0 ? (
+                  <Bar key={key} dataKey={key} fill={seriesColors[key] || defaultColors[idx]} radius={[4, 4, 0, 0]} />
+                ) : (
+                  <Line key={key} type="monotone" dataKey={key} stroke={seriesColors[key] || defaultColors[idx]} strokeWidth={2} />
+                )
+              )}
+            </ComposedChart>
           </ResponsiveContainer>
         );
 
       case "pie":
       case "donut":
+        const pieData = data.map((item) => ({
+          name: item[xAxisKey],
+          value: Number(item[activeSeries[0]] || 0),
+        }));
         return (
-          <ResponsiveContainer width="100%" height={250}>
+          <ResponsiveContainer width="100%" height={280}>
             <PieChart>
               <Pie
-                data={data}
+                data={pieData}
                 cx="50%"
                 cy="50%"
                 innerRadius={chartType === "donut" ? 60 : 0}
@@ -209,17 +431,11 @@ const ChartBlock = ({ chartType, chartTitle, chartData, onUpdate }: ChartBlockPr
                 label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                 labelLine={false}
               >
-                {data.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.fill} />
+                {pieData.map((_, index) => (
+                  <Cell key={`cell-${index}`} fill={defaultColors[index % defaultColors.length]} />
                 ))}
               </Pie>
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "hsl(var(--card))",
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: "8px",
-                }}
-              />
+              <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
               <Legend />
             </PieChart>
           </ResponsiveContainer>
@@ -245,34 +461,18 @@ const ChartBlock = ({ chartType, chartTitle, chartData, onUpdate }: ChartBlockPr
         ) : (
           <h3 className="text-lg font-semibold text-foreground">{chartTitle}</h3>
         )}
-
         <div className="flex items-center gap-2">
           {isEditing ? (
             <>
-              <motion.button
-                onClick={handleSave}
-                className="p-2 rounded-lg bg-primary text-primary-foreground"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
+              <motion.button onClick={handleSave} className="p-2 rounded-lg bg-primary text-primary-foreground" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                 <Check className="w-4 h-4" />
               </motion.button>
-              <motion.button
-                onClick={handleCancel}
-                className="p-2 rounded-lg bg-muted hover:bg-muted/80"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
+              <motion.button onClick={handleCancel} className="p-2 rounded-lg bg-muted hover:bg-muted/80" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                 <X className="w-4 h-4" />
               </motion.button>
             </>
           ) : (
-            <motion.button
-              onClick={() => setIsEditing(true)}
-              className="p-2 rounded-lg hover:bg-muted transition-colors"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
+            <motion.button onClick={() => setIsEditing(true)} className="p-2 rounded-lg hover:bg-muted transition-colors" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Edit3 className="w-4 h-4 text-muted-foreground" />
             </motion.button>
           )}
@@ -280,96 +480,153 @@ const ChartBlock = ({ chartType, chartTitle, chartData, onUpdate }: ChartBlockPr
       </div>
 
       {/* Chart Type Selector */}
-      {isEditing && (
-        <div className="flex items-center gap-2 flex-wrap">
-          {chartTypes.map((ct) => (
-            <motion.button
-              key={ct.type}
-              onClick={() => onUpdate({ chartType: ct.type })}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all ${
-                chartType === ct.type
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-muted border-border hover:border-primary/50"
-              }`}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <ct.icon className="w-4 h-4" />
-              <span className="text-sm font-medium">{ct.label}</span>
-            </motion.button>
-          ))}
-        </div>
-      )}
-
-      {/* Chart Display */}
-      <div className="bg-muted/30 rounded-lg p-2">{renderChart()}</div>
-
-      {/* Data Editor */}
       <AnimatePresence>
         {isEditing && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="space-y-3 overflow-hidden"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-muted-foreground">Data Points</span>
-              <motion.button
-                onClick={handleAddDataPoint}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-sm font-medium"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Add Point
-              </motion.button>
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="space-y-4 overflow-hidden">
+            <div>
+              <label className="text-sm font-medium text-muted-foreground mb-2 block">Chart Type</label>
+              <div className="flex flex-wrap gap-2">
+                {chartTypes.map((ct) => (
+                  <motion.button
+                    key={ct.type}
+                    onClick={() => onUpdate({ chartType: ct.type })}
+                    className={`px-3 py-2 rounded-lg border text-sm font-medium transition-all ${
+                      chartType === ct.type ? "bg-primary text-primary-foreground border-primary" : "bg-muted border-border hover:border-primary/50"
+                    }`}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    {ct.label}
+                  </motion.button>
+                ))}
+              </div>
             </div>
 
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {editingData.map((item) => (
-                <motion.div
-                  key={item.id}
-                  className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg"
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
+            {/* X-Axis Key Selector */}
+            <div>
+              <label className="text-sm font-medium text-muted-foreground mb-2 block">X-Axis Key</label>
+              <select
+                value={xAxisKey}
+                onChange={(e) => setXAxisKey(e.target.value)}
+                className="w-full bg-muted px-3 py-2 rounded-lg border border-border outline-none focus:ring-2 focus:ring-primary/50"
+              >
+                {columns.map((col) => (
+                  <option key={col.id} value={col.key}>{col.key}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Series Selection */}
+            <div>
+              <label className="text-sm font-medium text-muted-foreground mb-2 block">Data Series to Display</label>
+              <div className="flex flex-wrap gap-3">
+                {numericColumns.map((col) => (
+                  <label key={col.id} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedSeries.includes(col.key)}
+                      onChange={() => handleToggleSeries(col.key)}
+                      className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                    />
+                    <span className="text-sm">{col.key}</span>
+                    <input
+                      type="color"
+                      value={seriesColors[col.key] || defaultColors[0]}
+                      onChange={(e) => setSeriesColors({ ...seriesColors, [col.key]: e.target.value })}
+                      className="w-6 h-6 rounded cursor-pointer border-0"
+                    />
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Data Editor */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium text-muted-foreground">Data Editor</label>
+                <motion.button
+                  onClick={handleAddColumn}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-muted hover:bg-muted/80 text-sm font-medium"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                 >
-                  <input
-                    type="color"
-                    value={item.color}
-                    onChange={(e) => handleUpdateDataPoint(item.id, "color", e.target.value)}
-                    className="w-8 h-8 rounded cursor-pointer border-0"
-                  />
-                  <input
-                    type="text"
-                    value={item.label}
-                    onChange={(e) => handleUpdateDataPoint(item.id, "label", e.target.value)}
-                    className="flex-1 bg-background px-3 py-1.5 rounded-lg border border-border outline-none focus:ring-2 focus:ring-primary/50 text-sm"
-                    placeholder="Label"
-                  />
-                  <input
-                    type="number"
-                    value={item.value}
-                    onChange={(e) => handleUpdateDataPoint(item.id, "value", e.target.value)}
-                    className="w-24 bg-background px-3 py-1.5 rounded-lg border border-border outline-none focus:ring-2 focus:ring-primary/50 text-sm"
-                    placeholder="Value"
-                  />
-                  <motion.button
-                    onClick={() => handleDeleteDataPoint(item.id)}
-                    className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    disabled={editingData.length <= 1}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </motion.button>
-                </motion.div>
-              ))}
+                  <Plus className="w-3.5 h-3.5" />
+                  Add Column
+                </motion.button>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-muted/50">
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">Row</th>
+                      {columns.map((col) => (
+                        <th key={col.id} className="px-3 py-2 text-left font-medium">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={col.key}
+                              onChange={(e) => handleUpdateColumnKey(col.id, e.target.value)}
+                              className="bg-transparent border-b border-border outline-none focus:border-primary w-full"
+                            />
+                            {columns.length > 2 && (
+                              <button onClick={() => handleDeleteColumn(col.id)} className="text-destructive hover:text-destructive/80">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </th>
+                      ))}
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">Delete</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((row, idx) => (
+                      <tr key={row.id} className="border-b border-border">
+                        <td className="px-3 py-2 text-muted-foreground">{idx + 1}</td>
+                        {columns.map((col) => (
+                          <td key={col.id} className="px-3 py-2">
+                            <input
+                              type={col.type === "number" ? "number" : "text"}
+                              value={row.cells[col.key] ?? ""}
+                              onChange={(e) =>
+                                handleUpdateCell(row.id, col.key, col.type === "number" ? Number(e.target.value) : e.target.value)
+                              }
+                              className="w-full bg-background px-2 py-1 rounded border border-border outline-none focus:ring-1 focus:ring-primary/50"
+                            />
+                          </td>
+                        ))}
+                        <td className="px-3 py-2">
+                          <button
+                            onClick={() => handleDeleteRow(row.id)}
+                            disabled={rows.length <= 1}
+                            className="text-destructive hover:text-destructive/80 disabled:opacity-50"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <motion.button
+                onClick={handleAddRow}
+                className="w-full mt-2 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-muted hover:bg-muted/80 text-sm font-medium"
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
+              >
+                <Plus className="w-4 h-4" />
+                Add Row
+              </motion.button>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Chart Display */}
+      <div className="bg-muted/30 rounded-lg p-2">{renderChart()}</div>
     </div>
   );
 };
