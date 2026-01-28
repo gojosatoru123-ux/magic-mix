@@ -51,6 +51,7 @@ import ImageLightbox from "./ImageLightbox";
 import MindMap from "./MindMap";
 import FlashcardBlock from "./FlashcardBlock";
 import FlashcardStudyMode from "./FlashcardStudyMode";
+import ChartBlock from "./ChartBlock";
 
 interface NotionEditorProps {
   blocks: NoteBlock[];
@@ -88,6 +89,7 @@ const blockTypes = [
   { type: "database" as const, icon: Database, label: "Database", description: "Mini database", category: "advanced" },
   { type: "mindmap" as const, icon: Share2, label: "Mind Map", description: "Interactive mind map", category: "advanced" },
   { type: "flashcard" as const, icon: Lightbulb, label: "Flashcards", description: "Quick revision cards", category: "advanced" },
+  { type: "chart" as const, icon: BarChart3, label: "Chart", description: "Data visualization charts", category: "advanced" },
 ] as const;
 
 const progressColors = [
@@ -159,6 +161,14 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
       mindMapNodes: type === "mindmap" ? [{ id: crypto.randomUUID(), text: "Central Idea", x: 150, y: 150, color: "bg-blue-500" }] : undefined,
       mindMapConnections: type === "mindmap" ? [] : undefined,
       galleryImages: type === "gallery" ? [] : undefined,
+      chartType: type === "chart" ? "bar" : undefined,
+      chartTitle: type === "chart" ? "My Chart" : undefined,
+      chartData: type === "chart" ? [
+        { id: crypto.randomUUID(), label: "Item 1", value: 40, color: "#3b82f6" },
+        { id: crypto.randomUUID(), label: "Item 2", value: 65, color: "#22c55e" },
+        { id: crypto.randomUUID(), label: "Item 3", value: 30, color: "#a855f7" },
+        { id: crypto.randomUUID(), label: "Item 4", value: 80, color: "#f97316" },
+      ] : undefined,
     };
     const index = blocks.findIndex((b) => b.id === afterId);
     const newBlocks = [...blocks];
@@ -1459,6 +1469,18 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
               onChange={(flashcards) => updateBlock(block.id, { flashcards })}
               onTitleChange={(title) => updateBlock(block.id, { content: title })}
               onOpenStudyMode={() => setStudyModeBlock(block)}
+            />
+          </div>
+        );
+
+      case "chart":
+        return (
+          <div className="py-2">
+            <ChartBlock
+              chartType={block.chartType || "bar"}
+              chartTitle={block.chartTitle || "My Chart"}
+              chartData={block.chartData || []}
+              onUpdate={(updates) => updateBlock(block.id, updates)}
             />
           </div>
         );
