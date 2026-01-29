@@ -195,7 +195,7 @@ const FlashcardBlock = ({ flashcards, title, onChange, onTitleChange, onOpenStud
 
       {/* Hint */}
       <p className="text-xs text-muted-foreground text-center">
-        Click to edit • Double-click to change color • Enter to add new card
+        Click to edit • Hover to change color • Enter to add new card
       </p>
     </div>
   );
