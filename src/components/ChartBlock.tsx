@@ -38,7 +38,15 @@ import {
   Columns,
   ScatterChart as ScatterIcon,
   Radar as RadarIcon,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface ChartColumn {
   id: string;
@@ -105,6 +113,7 @@ const ChartBlock = ({
   onUpdate,
 }: ChartBlockProps) => {
   const [isEditing, setIsEditing] = useState(false);
+  const [isEnlarged, setIsEnlarged] = useState(false);
   const [editingTitle, setEditingTitle] = useState(chartTitle);
 
   // Initialize or migrate from legacy format
@@ -446,6 +455,178 @@ const ChartBlock = ({
     }
   };
 
+  // Render chart for enlarged view with bigger height
+  const renderEnlargedChart = () => {
+    const data = getChartData();
+    const activeSeries = selectedSeries.filter((s) => numericColumns.some((c) => c.key === s));
+    const enlargedHeight = 500;
+
+    switch (chartType) {
+      case "bar":
+        return (
+          <ResponsiveContainer width="100%" height={enlargedHeight}>
+            <BarChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey={xAxisKey} stroke="hsl(var(--muted-foreground))" fontSize={12} />
+              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+              <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+              <Legend />
+              {activeSeries.map((key) => (
+                <Bar key={key} dataKey={key} fill={seriesColors[key] || defaultColors[0]} radius={[4, 4, 0, 0]} />
+              ))}
+            </BarChart>
+          </ResponsiveContainer>
+        );
+
+      case "horizontalBar":
+        return (
+          <ResponsiveContainer width="100%" height={enlargedHeight}>
+            <BarChart data={data} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+              <YAxis dataKey={xAxisKey} type="category" stroke="hsl(var(--muted-foreground))" fontSize={12} width={80} />
+              <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+              <Legend />
+              {activeSeries.map((key) => (
+                <Bar key={key} dataKey={key} fill={seriesColors[key] || defaultColors[0]} radius={[0, 4, 4, 0]} />
+              ))}
+            </BarChart>
+          </ResponsiveContainer>
+        );
+
+      case "stackedBar":
+        return (
+          <ResponsiveContainer width="100%" height={enlargedHeight}>
+            <BarChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey={xAxisKey} stroke="hsl(var(--muted-foreground))" fontSize={12} />
+              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+              <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+              <Legend />
+              {activeSeries.map((key) => (
+                <Bar key={key} dataKey={key} stackId="a" fill={seriesColors[key] || defaultColors[0]} />
+              ))}
+            </BarChart>
+          </ResponsiveContainer>
+        );
+
+      case "line":
+        return (
+          <ResponsiveContainer width="100%" height={enlargedHeight}>
+            <LineChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey={xAxisKey} stroke="hsl(var(--muted-foreground))" fontSize={12} />
+              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+              <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+              <Legend />
+              {activeSeries.map((key) => (
+                <Line key={key} type="monotone" dataKey={key} stroke={seriesColors[key] || defaultColors[0]} strokeWidth={2} dot={{ fill: seriesColors[key] || defaultColors[0] }} />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        );
+
+      case "area":
+        return (
+          <ResponsiveContainer width="100%" height={enlargedHeight}>
+            <AreaChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey={xAxisKey} stroke="hsl(var(--muted-foreground))" fontSize={12} />
+              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+              <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+              <Legend />
+              {activeSeries.map((key) => (
+                <Area key={key} type="monotone" dataKey={key} stroke={seriesColors[key] || defaultColors[0]} fill={seriesColors[key] || defaultColors[0]} fillOpacity={0.3} />
+              ))}
+            </AreaChart>
+          </ResponsiveContainer>
+        );
+
+      case "scatter":
+        return (
+          <ResponsiveContainer width="100%" height={enlargedHeight}>
+            <ScatterChart>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey={activeSeries[0] || "value"} type="number" name={activeSeries[0]} stroke="hsl(var(--muted-foreground))" fontSize={12} />
+              <YAxis dataKey={activeSeries[1] || activeSeries[0] || "value"} type="number" name={activeSeries[1] || activeSeries[0]} stroke="hsl(var(--muted-foreground))" fontSize={12} />
+              <Tooltip cursor={{ strokeDasharray: "3 3" }} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+              <Legend />
+              <Scatter name="Data" data={data} fill={seriesColors[activeSeries[0]] || defaultColors[0]} />
+            </ScatterChart>
+          </ResponsiveContainer>
+        );
+
+      case "radar":
+        return (
+          <ResponsiveContainer width="100%" height={enlargedHeight}>
+            <RadarChart data={data}>
+              <PolarGrid stroke="hsl(var(--border))" />
+              <PolarAngleAxis dataKey={xAxisKey} stroke="hsl(var(--muted-foreground))" fontSize={12} />
+              <PolarRadiusAxis stroke="hsl(var(--muted-foreground))" fontSize={10} />
+              <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+              <Legend />
+              {activeSeries.map((key) => (
+                <Radar key={key} name={key} dataKey={key} stroke={seriesColors[key] || defaultColors[0]} fill={seriesColors[key] || defaultColors[0]} fillOpacity={0.3} />
+              ))}
+            </RadarChart>
+          </ResponsiveContainer>
+        );
+
+      case "combo":
+        return (
+          <ResponsiveContainer width="100%" height={enlargedHeight}>
+            <ComposedChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey={xAxisKey} stroke="hsl(var(--muted-foreground))" fontSize={12} />
+              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+              <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+              <Legend />
+              {activeSeries.map((key, idx) =>
+                idx % 2 === 0 ? (
+                  <Bar key={key} dataKey={key} fill={seriesColors[key] || defaultColors[idx]} radius={[4, 4, 0, 0]} />
+                ) : (
+                  <Line key={key} type="monotone" dataKey={key} stroke={seriesColors[key] || defaultColors[idx]} strokeWidth={2} />
+                )
+              )}
+            </ComposedChart>
+          </ResponsiveContainer>
+        );
+
+      case "pie":
+      case "donut":
+        const pieData = data.map((item) => ({
+          name: item[xAxisKey],
+          value: Number(item[activeSeries[0]] || 0),
+        }));
+        return (
+          <ResponsiveContainer width="100%" height={enlargedHeight}>
+            <PieChart>
+              <Pie
+                data={pieData}
+                cx="50%"
+                cy="50%"
+                innerRadius={chartType === "donut" ? 100 : 0}
+                outerRadius={180}
+                paddingAngle={2}
+                dataKey="value"
+                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                labelLine={false}
+              >
+                {pieData.map((_, index) => (
+                  <Cell key={`cell-${index}`} fill={defaultColors[index % defaultColors.length]} />
+                ))}
+              </Pie>
+              <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
+        );
+
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="bg-card border border-border rounded-xl p-4 space-y-4">
       {/* Header */}
@@ -472,9 +653,26 @@ const ChartBlock = ({
               </motion.button>
             </>
           ) : (
-            <motion.button onClick={() => setIsEditing(true)} className="p-2 rounded-lg hover:bg-muted transition-colors" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-              <Edit3 className="w-4 h-4 text-muted-foreground" />
-            </motion.button>
+            <>
+              <motion.button 
+                onClick={() => setIsEnlarged(true)} 
+                className="p-2 rounded-lg hover:bg-muted transition-colors" 
+                whileHover={{ scale: 1.05 }} 
+                whileTap={{ scale: 0.95 }}
+                title="Enlarge chart"
+              >
+                <Maximize2 className="w-4 h-4 text-muted-foreground" />
+              </motion.button>
+              <motion.button 
+                onClick={() => setIsEditing(true)} 
+                className="p-2 rounded-lg hover:bg-muted transition-colors" 
+                whileHover={{ scale: 1.05 }} 
+                whileTap={{ scale: 0.95 }}
+                title="Edit chart"
+              >
+                <Edit3 className="w-4 h-4 text-muted-foreground" />
+              </motion.button>
+            </>
           )}
         </div>
       </div>
@@ -627,6 +825,18 @@ const ChartBlock = ({
 
       {/* Chart Display */}
       <div className="bg-muted/30 rounded-lg p-2">{renderChart()}</div>
+
+      {/* Enlarged Chart Dialog */}
+      <Dialog open={isEnlarged} onOpenChange={setIsEnlarged}>
+        <DialogContent className="max-w-5xl w-full p-6">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold">{chartTitle}</DialogTitle>
+          </DialogHeader>
+          <div className="mt-4 bg-muted/30 rounded-lg p-4">
+            {renderEnlargedChart()}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

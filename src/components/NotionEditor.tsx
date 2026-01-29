@@ -839,44 +839,67 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
         return (
           <div className="py-2">
             <div className="border border-border rounded-lg overflow-hidden">
-              <table className="w-full">
-                <tbody>
-                  {block.tableData?.map((row, rowIndex) => (
-                    <tr key={rowIndex} className="group/row border-b border-border last:border-b-0">
-                      {row.map((cell, colIndex) => (
-                        <td key={colIndex} className="border-r border-border last:border-r-0 relative">
-                          <input
-                            type="text"
-                            value={cell}
-                            onChange={(e) => updateTableCell(block.id, rowIndex, colIndex, e.target.value)}
-                            className={`w-full px-3 py-2 text-sm outline-none bg-transparent ${
-                              rowIndex === 0 ? 'font-semibold bg-muted/30' : ''
-                            }`}
-                            placeholder={rowIndex === 0 ? "Header" : "Cell"}
-                          />
-                          {colIndex === row.length - 1 && rowIndex === 0 && (
-                            <button
-                              onClick={() => deleteTableColumn(block.id, colIndex)}
-                              className="absolute -right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover/row:opacity-100 p-1 bg-destructive/10 rounded-full hover:bg-destructive/20 transition-all"
-                            >
-                              <X className="w-3 h-3 text-destructive" />
-                            </button>
-                          )}
-                        </td>
-                      ))}
-                      <td className="w-8 opacity-0 group-hover/row:opacity-100">
+              {/* Column headers with delete buttons */}
+              <div className="bg-muted/50 border-b border-border">
+                <div className="flex">
+                  {block.tableData?.[0]?.map((_, colIndex) => (
+                    <div 
+                      key={colIndex} 
+                      className="flex-1 min-w-[120px] px-3 py-2 border-r border-border last:border-r-0 flex items-center justify-between gap-2"
+                    >
+                      <input
+                        type="text"
+                        value={block.tableData?.[0]?.[colIndex] || ""}
+                        onChange={(e) => updateTableCell(block.id, 0, colIndex, e.target.value)}
+                        className="flex-1 text-sm font-semibold outline-none bg-transparent min-w-0"
+                        placeholder="Header"
+                      />
+                      {(block.tableData?.[0]?.length || 0) > 1 && (
                         <button
-                          onClick={() => deleteTableRow(block.id, rowIndex)}
-                          className="p-1 hover:bg-destructive/10 rounded transition-colors"
+                          onClick={() => deleteTableColumn(block.id, colIndex)}
+                          className="p-1 rounded hover:bg-destructive/10 transition-colors flex-shrink-0"
+                          title="Delete column"
                         >
                           <X className="w-3 h-3 text-destructive" />
                         </button>
-                      </td>
-                    </tr>
+                      )}
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                </div>
+              </div>
+              
+              {/* Data rows */}
+              <div className="divide-y divide-border">
+                {block.tableData?.slice(1).map((row, rowIndex) => (
+                  <div key={rowIndex + 1} className="flex group/row">
+                    {row.map((cell, colIndex) => (
+                      <div 
+                        key={colIndex} 
+                        className="flex-1 min-w-[120px] border-r border-border last:border-r-0"
+                      >
+                        <input
+                          type="text"
+                          value={cell}
+                          onChange={(e) => updateTableCell(block.id, rowIndex + 1, colIndex, e.target.value)}
+                          className="w-full px-3 py-2 text-sm outline-none bg-transparent"
+                          placeholder="Cell"
+                        />
+                      </div>
+                    ))}
+                    <div className="w-8 flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => deleteTableRow(block.id, rowIndex + 1)}
+                        className="p-1 rounded hover:bg-destructive/10 transition-colors"
+                        title="Delete row"
+                      >
+                        <X className="w-3 h-3 text-destructive" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
+            
             <div className="flex gap-2 mt-2">
               <button
                 onClick={() => addTableRow(block.id)}
