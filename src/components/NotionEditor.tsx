@@ -840,18 +840,18 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
           <div className="py-2">
             <div className="border border-border rounded-lg overflow-hidden">
               {/* Column headers with delete buttons */}
-              <div className="bg-muted/50 border-b border-border">
-                <div className="flex">
+              <div className="bg-muted/50 border-b border-border overflow-x-auto">
+                <div className="flex inline-flex min-w-full">
                   {block.tableData?.[0]?.map((_, colIndex) => (
-                    <div 
-                      key={colIndex} 
-                      className="flex-1 min-w-[120px] px-3 py-2 border-r border-border last:border-r-0 flex items-center justify-between gap-2"
+                    <div
+                      key={colIndex}
+                      className="flex-auto min-w-fit px-3 py-2 border-r border-border last:border-r-0 flex items-center justify-between gap-2"
                     >
                       <input
                         type="text"
                         value={block.tableData?.[0]?.[colIndex] || ""}
                         onChange={(e) => updateTableCell(block.id, 0, colIndex, e.target.value)}
-                        className="flex-1 text-sm font-semibold outline-none bg-transparent min-w-0"
+                        className="flex-auto text-sm font-semibold outline-none bg-transparent min-w-0"
                         placeholder="Header"
                       />
                       {(block.tableData?.[0]?.length || 0) > 1 && (
@@ -867,15 +867,15 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
                   ))}
                 </div>
               </div>
-              
+
               {/* Data rows */}
-              <div className="divide-y divide-border">
+              <div className="divide-y divide-border overflow-x-auto">
                 {block.tableData?.slice(1).map((row, rowIndex) => (
-                  <div key={rowIndex + 1} className="flex group/row">
+                  <div key={rowIndex + 1} className="flex inline-flex min-w-full group/row">
                     {row.map((cell, colIndex) => (
-                      <div 
-                        key={colIndex} 
-                        className="flex-1 min-w-[120px] border-r border-border last:border-r-0"
+                      <div
+                        key={colIndex}
+                        className="flex-auto min-w-fit border-r border-border last:border-r-0"
                       >
                         <input
                           type="text"
@@ -886,7 +886,7 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
                         />
                       </div>
                     ))}
-                    <div className="w-8 flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity">
+                    <div className="w-8 flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity flex-shrink-0">
                       <button
                         onClick={() => deleteTableRow(block.id, rowIndex + 1)}
                         className="p-1 rounded hover:bg-destructive/10 transition-colors"
