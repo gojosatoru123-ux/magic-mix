@@ -662,7 +662,7 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
                 contentEditable
                 suppressContentEditableWarning
                 onBlur={(e) => {
-                  const text = e.currentTarget.textContent || "";
+                  const text = extractContentFromEditable(e.currentTarget);
                   if (text !== block.content) {
                     updateBlock(block.id, { content: text });
                   }
