@@ -137,11 +137,11 @@ const NoteEditorFull = ({ note, onUpdate, focusMode = false, onToggleFocusMode }
 
       {/* Content Area */}
       <div className={`flex-1 overflow-y-auto scrollbar-thin ${focusMode ? 'pt-8' : ''}`}>
-        <motion.div 
-          className={`mx-auto p-6 md:p-10 transition-all duration-300 ${
-            focusMode 
-              ? 'max-w-3xl pt-16' 
-              : 'max-w-4xl'
+        <motion.div
+          className={`mx-auto transition-all duration-300 ${
+            focusMode
+              ? 'max-w-3xl pt-16 px-4 md:px-6 py-6'
+              : 'max-w-4xl p-6 md:p-10'
           }`}
           layout
         >
