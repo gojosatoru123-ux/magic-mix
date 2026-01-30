@@ -1715,10 +1715,8 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
                 drag="y"
                 dragElastic={0.15}
                 dragMomentum={false}
-                animate={{
-                  y: draggedBlockId === block.id ? 0 : 0,
-                }}
-                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                initial={{ y: 0 }}
+                animate={{ y: 0 }}
                 onPointerDown={(e) => handleBlockDragStart(block.id, e.clientY)}
                 onDragEnd={() => handleBlockDragEnd(block.id)}
               >
