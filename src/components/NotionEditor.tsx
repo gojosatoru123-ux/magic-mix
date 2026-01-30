@@ -1645,7 +1645,11 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
               scale: draggedBlockId === block.id ? 0.98 : 1,
             }}
             transition={{ duration: 0.2 }}
-            className={`group relative flex items-start gap-1 ${
+            className={`group relative flex items-start gap-1 rounded-lg transition-all ${
+              draggedBlockId === block.id
+                ? 'bg-primary/5 shadow-lg shadow-primary/20'
+                : ''
+            } ${
               dragOverBlockId === block.id && draggedBlockId !== block.id
                 ? 'border-t-2 border-primary/50 pt-1'
                 : ''
