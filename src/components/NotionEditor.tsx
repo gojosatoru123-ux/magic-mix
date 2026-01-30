@@ -1689,12 +1689,7 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
                 dragMomentum={false}
                 onDragStart={() => handleBlockDragStart(block.id)}
                 onDrag={(_, info) => handleBlockDragOver(block.id, info.offset.y)}
-                onDragEnd={() => {
-                  handleBlockDragEnd();
-                  if (dragOverBlockId && dragOverBlockId !== block.id) {
-                    reorderBlocks(block.id, dragOverBlockId);
-                  }
-                }}
+                onDragEnd={() => handleBlockDragEnd(block.id)}
               >
                 <GripVertical className="w-4 h-4 text-muted-foreground" />
               </motion.div>
