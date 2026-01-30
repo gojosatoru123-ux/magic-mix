@@ -111,8 +111,11 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
   const [lightboxImages, setLightboxImages] = useState<{ url: string; caption?: string }[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [studyModeBlock, setStudyModeBlock] = useState<NoteBlock | null>(null);
+  const [draggedBlockId, setDraggedBlockId] = useState<string | null>(null);
+  const [dragOverBlockId, setDragOverBlockId] = useState<string | null>(null);
   const blockRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const contentRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const dragYRef = useRef(0);
 
   const updateBlock = (id: string, updates: Partial<NoteBlock>) => {
     onChange(
@@ -401,6 +404,67 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
       bt.description.toLowerCase().includes(menuFilter.toLowerCase())
   );
 
+  const handleBlockDragStart = (blockId: string, clientY: number) => {
+    setDraggedBlockId(blockId);
+    setShowMenu(null);
+    dragYRef.current = clientY;
+  };
+
+  const handleBlockDragEnd = (draggedId: string) => {
+    if (dragOverBlockId && dragOverBlockId !== draggedId) {
+      reorderBlocks(draggedId, dragOverBlockId);
+    }
+    setDraggedBlockId(null);
+    setDragOverBlockId(null);
+  };
+
+  const handlePointerMove = (e: PointerEvent) => {
+    if (!draggedBlockId) return;
+
+    // Find which block the pointer is over
+    let foundBlock = false;
+    blocks.forEach((block) => {
+      const element = blockRefs.current.get(block.id);
+      if (!element) return;
+
+      const rect = element.getBoundingClientRect();
+      const isOver =
+        e.clientY >= rect.top &&
+        e.clientY <= rect.bottom &&
+        block.id !== draggedBlockId;
+
+      if (isOver && !foundBlock) {
+        setDragOverBlockId(block.id);
+        foundBlock = true;
+      }
+    });
+
+    // Clear dragOverBlockId if not over any block
+    if (!foundBlock) {
+      setDragOverBlockId(null);
+    }
+  };
+
+  const reorderBlocks = (draggedId: string, targetId: string) => {
+    const draggedIndex = blocks.findIndex(b => b.id === draggedId);
+    const targetIndex = blocks.findIndex(b => b.id === targetId);
+
+    if (draggedIndex === -1 || targetIndex === -1 || draggedIndex === targetIndex) {
+      return;
+    }
+
+    const newBlocks = [...blocks];
+    const [draggedBlock] = newBlocks.splice(draggedIndex, 1);
+
+    if (draggedIndex < targetIndex) {
+      newBlocks.splice(targetIndex - 1, 0, draggedBlock);
+    } else {
+      newBlocks.splice(targetIndex, 0, draggedBlock);
+    }
+
+    onChange(newBlocks);
+  };
+
   // Track content refs to avoid re-renders resetting cursor
   const initializedRefs = useRef<Set<string>>(new Set());
   const currentBlockIds = useRef<string>("");
@@ -413,6 +477,22 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
       currentBlockIds.current = blockIds;
     }
   }, [blocks]);
+
+  // Add pointer move and up listeners for drag detection
+  useEffect(() => {
+    if (!draggedBlockId) return;
+
+    const handlePointerUp = () => {
+      handleBlockDragEnd(draggedBlockId);
+    };
+
+    window.addEventListener("pointermove", handlePointerMove as EventListener);
+    window.addEventListener("pointerup", handlePointerUp);
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove as EventListener);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+  }, [draggedBlockId, blocks, dragOverBlockId]);
 
   // Render editable content with formatting preserved - NO children to avoid cursor reset
   const renderEditableContent = (block: NoteBlock) => {
@@ -1599,12 +1679,38 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
         {blocks.map((block) => (
           <motion.div
             key={block.id}
+            layout
             ref={(el) => el && blockRefs.current.set(block.id, el)}
             initial={{ opacity: 0, y: -5 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="group relative flex items-start gap-1"
-            onMouseEnter={() => setActiveBlockId(block.id)}
-            onMouseLeave={() => setActiveBlockId(null)}
+            animate={{
+              opacity: draggedBlockId === block.id ? 0.5 : 1,
+              y: 0,
+              scale: draggedBlockId === block.id ? 0.98 : 1,
+            }}
+            transition={{ duration: 0.15, type: "spring", stiffness: 300, damping: 30 }}
+            className={`group relative flex items-start gap-1 rounded-lg transition-all ${
+              draggedBlockId === block.id
+                ? 'bg-primary/5 shadow-lg shadow-primary/20'
+                : ''
+            } ${
+              dragOverBlockId === block.id && draggedBlockId !== block.id
+                ? 'border-t-2 border-primary/50 pt-1'
+                : ''
+            }`}
+            onMouseEnter={() => {
+              setActiveBlockId(block.id);
+              if (draggedBlockId && draggedBlockId !== block.id) {
+                setDragOverBlockId(block.id);
+              }
+            }}
+            onMouseLeave={() => {
+              if (draggedBlockId !== block.id) {
+                setActiveBlockId(null);
+                if (dragOverBlockId === block.id) {
+                  setDragOverBlockId(null);
+                }
+              }
+            }}
           >
             {/* Block Controls */}
             <motion.div 
@@ -1620,9 +1726,13 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
               >
                 <Plus className="w-4 h-4 text-muted-foreground group-hover/btn:text-primary transition-colors" />
               </motion.button>
-              <motion.button 
+              <motion.button
                 className="p-1.5 rounded-lg hover:bg-muted transition-colors cursor-grab active:cursor-grabbing"
                 whileHover={{ scale: 1.1 }}
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  handleBlockDragStart(block.id, e.clientY);
+                }}
               >
                 <GripVertical className="w-4 h-4 text-muted-foreground" />
               </motion.button>
