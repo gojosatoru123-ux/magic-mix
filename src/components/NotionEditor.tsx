@@ -409,30 +409,16 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
     setShowMenu(null);
   };
 
-  const handleBlockDragEnd = () => {
+  const handleBlockDragEnd = (draggedId: string) => {
+    if (dragOverBlockId && dragOverBlockId !== draggedId) {
+      reorderBlocks(draggedId, dragOverBlockId);
+    }
     setDraggedBlockId(null);
     setDragOverBlockId(null);
   };
 
   const handleBlockDragOver = (blockId: string, offsetY: number) => {
     dragYRef.current = offsetY;
-    // Detect which block the cursor is over and set it as the target
-    blocks.forEach((b) => {
-      const element = blockRefs.current.get(b.id);
-      if (!element) return;
-
-      const rect = element.getBoundingClientRect();
-      const mouseY = window.innerHeight / 2 + offsetY; // Approximate mouse Y
-
-      // Check if mouse is over this block
-      if (
-        mouseY >= rect.top &&
-        mouseY <= rect.bottom &&
-        b.id !== blockId
-      ) {
-        setDragOverBlockId(b.id);
-      }
-    });
   };
 
   const reorderBlocks = (draggedId: string, targetId: string) => {
