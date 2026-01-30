@@ -416,7 +416,10 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
 
   const handleBlockDragOver = (blockId: string, offsetY: number) => {
     dragYRef.current = offsetY;
-    setDragOverBlockId(blockId);
+    // Set the block being hovered over as the target for reordering
+    if (blockId !== draggedBlockId) {
+      setDragOverBlockId(blockId);
+    }
   };
 
   const reorderBlocks = (draggedId: string, targetId: string) => {
