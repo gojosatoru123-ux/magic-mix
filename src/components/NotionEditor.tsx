@@ -1657,8 +1657,17 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
                 ? 'border-t-2 border-primary/50 pt-1'
                 : ''
             }`}
-            onMouseEnter={() => setActiveBlockId(block.id)}
-            onMouseLeave={() => setActiveBlockId(null)}
+            onMouseEnter={() => {
+              setActiveBlockId(block.id);
+              if (draggedBlockId && draggedBlockId !== block.id) {
+                setDragOverBlockId(block.id);
+              }
+            }}
+            onMouseLeave={() => {
+              if (draggedBlockId !== block.id) {
+                setActiveBlockId(null);
+              }
+            }}
           >
             {/* Block Controls */}
             <motion.div 
