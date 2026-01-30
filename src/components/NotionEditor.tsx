@@ -404,9 +404,10 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
       bt.description.toLowerCase().includes(menuFilter.toLowerCase())
   );
 
-  const handleBlockDragStart = (blockId: string) => {
+  const handleBlockDragStart = (blockId: string, clientY: number) => {
     setDraggedBlockId(blockId);
     setShowMenu(null);
+    dragYRef.current = clientY;
   };
 
   const handleBlockDragEnd = (draggedId: string) => {
@@ -417,8 +418,24 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
     setDragOverBlockId(null);
   };
 
-  const handleBlockDragOver = (blockId: string, offsetY: number) => {
-    dragYRef.current = offsetY;
+  const handlePointerMove = (e: PointerEvent) => {
+    if (!draggedBlockId) return;
+
+    // Find which block the pointer is over
+    blocks.forEach((block) => {
+      const element = blockRefs.current.get(block.id);
+      if (!element) return;
+
+      const rect = element.getBoundingClientRect();
+      const isOver =
+        e.clientY >= rect.top &&
+        e.clientY <= rect.bottom &&
+        block.id !== draggedBlockId;
+
+      if (isOver) {
+        setDragOverBlockId(block.id);
+      }
+    });
   };
 
   const reorderBlocks = (draggedId: string, targetId: string) => {
