@@ -939,20 +939,24 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
                 ref={(el) => {
                   if (el) {
                     contentRefs.current.set(block.id, el);
-                    if (el.textContent === "" && block.content) {
-                      el.textContent = block.content;
+                    if (!initializedRefs.current.has(block.id)) {
+                      el.textContent = block.content || "";
+                      initializedRefs.current.add(block.id);
                     }
                   }
                 }}
                 contentEditable
                 suppressContentEditableWarning
-                onInput={(e) => handleContentInput(block, e.currentTarget)}
+                onBlur={(e) => {
+                  const text = e.currentTarget.textContent || "";
+                  if (text !== block.content) {
+                    updateBlock(block.id, { content: text });
+                  }
+                }}
                 onKeyDown={(e) => handleKeyDown(e, block)}
-                className="outline-none"
+                className="outline-none min-h-[60px]"
                 data-placeholder="∑ (x² + y²) = z²"
-              >
-                {block.content}
-              </div>
+              />
             </div>
           </div>
         );
