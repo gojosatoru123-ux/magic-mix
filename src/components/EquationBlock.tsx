@@ -10,7 +10,7 @@ interface EquationBlockProps {
 }
 
 const EquationBlock = ({ content, onChange }: EquationBlockProps) => {
-  const [isEditing, setIsEditing] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
   const [copiedFormula, setCopiedFormula] = useState(false);
 
   const renderLatex = (latex: string): string => {
