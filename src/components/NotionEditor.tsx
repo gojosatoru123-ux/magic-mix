@@ -978,20 +978,93 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
                   <div className="space-y-2">
                     {(column || []).map((nestedBlock, blockIndex) => (
                       <div key={nestedBlock.id || blockIndex} className="relative group/nested">
-                        {renderBlock(nestedBlock)}
-                        <div className="absolute top-0 right-0 opacity-0 group-hover/nested:opacity-100 transition-opacity flex gap-1">
-                          <button
-                            onClick={() => {
-                              const newColumns = [...(block.columns || [])];
-                              newColumns[colIndex] = newColumns[colIndex].filter((_, idx) => idx !== blockIndex);
-                              updateBlock(block.id, { columns: newColumns });
+                        {/* Render nested text blocks with proper update handlers */}
+                        {nestedBlock.type === "text" && (
+                          <div
+                            ref={(el) => {
+                              if (el) {
+                                contentRefs.current.set(nestedBlock.id, el);
+                                if (!initializedRefs.current.has(nestedBlock.id)) {
+                                  el.textContent = nestedBlock.content || "";
+                                  initializedRefs.current.add(nestedBlock.id);
+                                }
+                              }
                             }}
-                            className="p-1 rounded hover:bg-destructive/10"
-                            title="Delete"
-                          >
-                            <X className="w-3 h-3 text-destructive" />
-                          </button>
-                        </div>
+                            contentEditable
+                            suppressContentEditableWarning
+                            onBlur={(e) => {
+                              const text = e.currentTarget.textContent || "";
+                              if (text !== nestedBlock.content) {
+                                updateNestedBlock(block.id, colIndex, nestedBlock.id, { content: text });
+                              }
+                            }}
+                            onKeyDown={(e) => handleKeyDown(e, nestedBlock)}
+                            className="outline-none py-1 text-sm empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground/40"
+                            data-placeholder="Type here..."
+                          />
+                        )}
+                        {nestedBlock.type === "bullet" && (
+                          <div className="flex items-start gap-3 py-1">
+                            <span className="mt-2.5 w-2 h-2 rounded-full bg-primary/60 flex-shrink-0" />
+                            <div
+                              ref={(el) => {
+                                if (el) {
+                                  contentRefs.current.set(nestedBlock.id, el);
+                                  if (!initializedRefs.current.has(nestedBlock.id)) {
+                                    el.textContent = nestedBlock.content || "";
+                                    initializedRefs.current.add(nestedBlock.id);
+                                  }
+                                }
+                              }}
+                              contentEditable
+                              suppressContentEditableWarning
+                              onBlur={(e) => {
+                                const text = e.currentTarget.textContent || "";
+                                if (text !== nestedBlock.content) {
+                                  updateNestedBlock(block.id, colIndex, nestedBlock.id, { content: text });
+                                }
+                              }}
+                              onKeyDown={(e) => handleKeyDown(e, nestedBlock)}
+                              className="flex-1 outline-none text-sm"
+                              data-placeholder="List item"
+                            />
+                          </div>
+                        )}
+                        {nestedBlock.type === "heading1" && (
+                          <div
+                            ref={(el) => {
+                              if (el) {
+                                contentRefs.current.set(nestedBlock.id, el);
+                                if (!initializedRefs.current.has(nestedBlock.id)) {
+                                  el.textContent = nestedBlock.content || "";
+                                  initializedRefs.current.add(nestedBlock.id);
+                                }
+                              }
+                            }}
+                            contentEditable
+                            suppressContentEditableWarning
+                            onBlur={(e) => {
+                              const text = e.currentTarget.textContent || "";
+                              if (text !== nestedBlock.content) {
+                                updateNestedBlock(block.id, colIndex, nestedBlock.id, { content: text });
+                              }
+                            }}
+                            onKeyDown={(e) => handleKeyDown(e, nestedBlock)}
+                            className="outline-none text-2xl font-bold empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground/40"
+                            data-placeholder="Heading 1"
+                          />
+                        )}
+                        <button
+                          onClick={() => {
+                            const newColumns = [...(block.columns || [])];
+                            newColumns[colIndex] = newColumns[colIndex].filter((_, idx) => idx !== blockIndex);
+                            updateBlock(block.id, { columns: newColumns });
+                          }}
+                          className="absolute top-0 right-0 opacity-0 group-hover/nested:opacity-100 p-1 rounded hover:bg-destructive/10 transition-opacity"
+                          title="Delete"
+                        >
+                          <X className="w-3 h-3 text-destructive" />
+                        </button>
                       </div>
                     ))}
                   </div>
