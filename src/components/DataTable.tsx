@@ -149,10 +149,17 @@ const DataTable = ({ block, onUpdate, onCreateChart }: DataTableProps) => {
                   return (
                     <td
                       key={colIndex}
-                      className={`px-3 py-2 border-r border-border last:border-r-0 relative ${
+                      className={`px-3 py-2 border-r border-border last:border-r-0 relative min-w-[150px] ${
                         isSelected ? "bg-primary/10 ring-2 ring-primary" : ""
                       }`}
-                      onClick={() => setSelectedCell({ row: rowIndex + 1, col: colIndex })}
+                      onClick={(e) => {
+                        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                        setToolbarPosition({
+                          top: rect.top - 60,
+                          left: rect.left,
+                        });
+                        setSelectedCell({ row: rowIndex + 1, col: colIndex });
+                      }}
                     >
                       <input
                         type="text"
