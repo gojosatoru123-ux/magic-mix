@@ -1572,23 +1572,41 @@ const NotionEditor = ({ blocks, onChange }: NotionEditorProps) => {
 
       case "database":
         return (
-          <DatabaseBlock
+          <DataTable
             block={block}
             onUpdate={(updates) => updateBlock(block.id, updates)}
-            onCreateChart={(chartData) => {
+            onCreateChart={(tableId, columnNames) => {
               // Add a new chart block after this database block
               const index = blocks.findIndex((b) => b.id === block.id);
+              const tableData = block.tableData || [];
+
+              // Convert table data to chart format
+              const chartRows = tableData.slice(1).map((row) => ({
+                id: crypto.randomUUID(),
+                cells: row.reduce((acc, cell, idx) => ({
+                  ...acc,
+                  [tableData[0][idx] || `col${idx}`]: isNaN(Number(cell)) ? cell : Number(cell),
+                }), {}),
+              }));
+
+              const chartColumns = tableData[0].map((name, idx) => ({
+                id: `col${idx}`,
+                key: name || `col${idx}`,
+                type: /^\d+(\.\d+)?$/.test(tableData[1]?.[idx] || "") ? "number" : "text",
+              }));
+
               const chartBlock: NoteBlock = {
                 id: crypto.randomUUID(),
                 type: "chart",
-                content: "Chart from Database",
+                content: "Chart from Table",
                 chartType: "bar",
-                chartTitle: "My Chart",
-                chartColumns: chartData.columns,
-                chartRows: chartData.rows,
-                chartXAxisKey: chartData.columns[0]?.id,
-                chartSelectedSeries: chartData.columns.filter(c => c.type === "number").map(c => c.id),
+                chartTitle: `Chart from ${block.content || "Table"}`,
+                chartColumns,
+                chartRows,
+                chartXAxisKey: chartColumns[0]?.id,
+                chartSelectedSeries: chartColumns.filter(c => c.type === "number").map(c => c.id),
                 chartSeriesColors: {},
+                linkedTableId: tableId, // Link back to source table for live updates
               };
               const newBlocks = [...blocks];
               newBlocks.splice(index + 1, 0, chartBlock);
