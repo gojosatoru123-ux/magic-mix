@@ -54,6 +54,7 @@ import FlashcardStudyMode from "./FlashcardStudyMode";
 import ChartBlock from "./ChartBlock";
 import EquationBlock from "./EquationBlock";
 import DatabaseBlock from "./DatabaseBlock";
+import DataTable from "./DataTable";
 
 interface NotionEditorProps {
   blocks: NoteBlock[];
