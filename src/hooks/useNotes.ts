@@ -22,6 +22,7 @@ export interface NoteBlock {
   content: string;
   checked?: boolean;
   tableData?: string[][];
+  cellFormattingMap?: Record<string, { bold?: boolean; italic?: boolean; color?: string; bgColor?: string }>;
   isExpanded?: boolean; // for toggle blocks
   toggleContent?: string; // editable content inside toggle
   imageUrl?: string; // for image blocks
