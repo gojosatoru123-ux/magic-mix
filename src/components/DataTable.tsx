@@ -190,120 +190,112 @@ const DataTable = ({ block, onUpdate, onCreateChart }: DataTableProps) => {
       <AnimatePresence>
         {selectedCell && toolbarPosition && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            initial={{ opacity: 0, scale: 0.8, y: 5 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            exit={{ opacity: 0, scale: 0.8, y: 5 }}
+            transition={{ duration: 0.15 }}
             style={{
               position: "fixed",
               top: `${toolbarPosition.top}px`,
               left: `${toolbarPosition.left}px`,
               zIndex: 50,
+              transform: "translateX(-50%)",
             }}
-            className="bg-background border border-border rounded-lg shadow-xl p-2"
+            className="bg-foreground text-background rounded-lg shadow-2xl py-1.5 px-1 flex items-center gap-0.5 backdrop-blur-sm border border-foreground/20"
           >
-            <div className="flex items-center gap-1">
-              {/* Bold Button */}
+            {/* Bold Button */}
+            <button
+              onClick={() =>
+                updateCellFormatting(
+                  selectedCell.row,
+                  selectedCell.col,
+                  { bold: !getCellFormatting(selectedCell.row, selectedCell.col)?.bold }
+                )
+              }
+              title="Bold (Cmd+B)"
+              className={`flex items-center justify-center p-1.5 rounded transition-all ${
+                getCellFormatting(selectedCell.row, selectedCell.col)?.bold
+                  ? "bg-background text-foreground"
+                  : "hover:bg-white/20"
+              }`}
+            >
+              <Bold className="w-4 h-4" />
+            </button>
+
+            {/* Italic Button */}
+            <button
+              onClick={() =>
+                updateCellFormatting(
+                  selectedCell.row,
+                  selectedCell.col,
+                  { italic: !getCellFormatting(selectedCell.row, selectedCell.col)?.italic }
+                )
+              }
+              title="Italic (Cmd+I)"
+              className={`flex items-center justify-center p-1.5 rounded transition-all ${
+                getCellFormatting(selectedCell.row, selectedCell.col)?.italic
+                  ? "bg-background text-foreground"
+                  : "hover:bg-white/20"
+              }`}
+            >
+              <Italic className="w-4 h-4" />
+            </button>
+
+            {/* Divider */}
+            <div className="w-px h-5 bg-white/20 mx-0.5" />
+
+            {/* Text Color */}
+            <div className="relative group">
               <button
-                onClick={() =>
-                  updateCellFormatting(
-                    selectedCell.row,
-                    selectedCell.col,
-                    { bold: !getCellFormatting(selectedCell.row, selectedCell.col)?.bold }
-                  )
-                }
-                title="Bold"
-                className={`flex items-center justify-center gap-1 p-2 text-xs rounded transition-colors ${
-                  getCellFormatting(selectedCell.row, selectedCell.col)?.bold
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted hover:bg-muted/80"
-                }`}
+                title="Text color"
+                className="flex items-center justify-center p-1.5 rounded hover:bg-white/20 transition-all"
               >
-                <Bold className="w-4 h-4" />
+                <Palette className="w-4 h-4" />
               </button>
-
-              {/* Italic Button */}
-              <button
-                onClick={() =>
-                  updateCellFormatting(
-                    selectedCell.row,
-                    selectedCell.col,
-                    { italic: !getCellFormatting(selectedCell.row, selectedCell.col)?.italic }
-                  )
-                }
-                title="Italic"
-                className={`flex items-center justify-center gap-1 p-2 text-xs rounded transition-colors ${
-                  getCellFormatting(selectedCell.row, selectedCell.col)?.italic
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted hover:bg-muted/80"
-                }`}
-              >
-                <Italic className="w-4 h-4" />
-              </button>
-
-              {/* Divider */}
-              <div className="w-px h-6 bg-border" />
-
-              {/* Text Color */}
-              <div className="relative group">
-                <button
-                  title="Text color"
-                  className="flex items-center justify-center p-2 text-xs rounded bg-muted hover:bg-muted/80 transition-colors"
-                >
-                  <Palette className="w-4 h-4" />
-                </button>
-                <div className="absolute hidden group-hover:flex flex-col gap-1 bg-background border border-border rounded-lg shadow-lg p-2 z-50 top-full mt-1 right-0">
-                  {colorOptions.map((color) => (
-                    <button
-                      key={color.value}
-                      onClick={() =>
-                        updateCellFormatting(selectedCell.row, selectedCell.col, { color: color.value || undefined })
-                      }
-                      className="flex items-center gap-2 px-2 py-1 text-xs hover:bg-muted rounded whitespace-nowrap"
-                    >
-                      <div
-                        className="w-3 h-3 rounded border border-border"
-                        style={{ backgroundColor: color.value || "#999" }}
-                      />
-                      {color.name}
-                    </button>
-                  ))}
-                </div>
+              <div className="absolute hidden group-hover:flex flex-col gap-1 bg-background border border-border rounded-lg shadow-lg p-1.5 z-50 top-full mt-1.5 left-1/2 -translate-x-1/2">
+                {colorOptions.map((color) => (
+                  <button
+                    key={color.value}
+                    onClick={() =>
+                      updateCellFormatting(selectedCell.row, selectedCell.col, { color: color.value || undefined })
+                    }
+                    className="flex items-center gap-2 px-2 py-1 text-xs hover:bg-muted rounded whitespace-nowrap transition-colors"
+                  >
+                    <div
+                      className="w-3 h-3 rounded-full border border-border"
+                      style={{ backgroundColor: color.value || "#999" }}
+                    />
+                    {color.name}
+                  </button>
+                ))}
               </div>
+            </div>
 
-              {/* Background Color */}
-              <div className="relative group">
-                <button
-                  title="Background color"
-                  className="flex items-center justify-center p-2 text-xs rounded bg-muted hover:bg-muted/80 transition-colors"
-                >
-                  <div className="w-4 h-4 bg-current opacity-50" />
-                </button>
-                <div className="absolute hidden group-hover:flex flex-col gap-1 bg-background border border-border rounded-lg shadow-lg p-2 z-50 top-full mt-1 right-0">
-                  {colorOptions.map((color) => (
-                    <button
-                      key={`bg-${color.value}`}
-                      onClick={() =>
-                        updateCellFormatting(selectedCell.row, selectedCell.col, { bgColor: color.value || undefined })
-                      }
-                      className="flex items-center gap-2 px-2 py-1 text-xs hover:bg-muted rounded whitespace-nowrap"
-                    >
-                      <div
-                        className="w-3 h-3 rounded border border-border"
-                        style={{ backgroundColor: color.value || "#999" }}
-                      />
-                      BG
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Close Button */}
+            {/* Background Color */}
+            <div className="relative group">
               <button
-                onClick={() => setSelectedCell(null)}
-                className="ml-1 p-2 hover:bg-destructive/10 rounded"
+                title="Highlight color"
+                className="flex items-center justify-center p-1.5 rounded hover:bg-white/20 transition-all"
               >
-                <X className="w-4 h-4 text-destructive" />
+                <div className="w-4 h-4 bg-current opacity-70" />
               </button>
+              <div className="absolute hidden group-hover:flex flex-col gap-1 bg-background border border-border rounded-lg shadow-lg p-1.5 z-50 top-full mt-1.5 left-1/2 -translate-x-1/2">
+                {colorOptions.map((color) => (
+                  <button
+                    key={`bg-${color.value}`}
+                    onClick={() =>
+                      updateCellFormatting(selectedCell.row, selectedCell.col, { bgColor: color.value || undefined })
+                    }
+                    className="flex items-center gap-2 px-2 py-1 text-xs hover:bg-muted rounded whitespace-nowrap transition-colors"
+                  >
+                    <div
+                      className="w-3 h-3 rounded-full border border-border"
+                      style={{ backgroundColor: color.value || "#999" }}
+                    />
+                    Highlight
+                  </button>
+                ))}
+              </div>
             </div>
           </motion.div>
         )}
