@@ -148,23 +148,37 @@ const DataTable = ({ block, onUpdate, onCreateChart }: DataTableProps) => {
       return;
     }
 
-    // Find the selected cell element
-    const rows = tableContainerRef.current.querySelectorAll("tbody tr");
-    const cellInRow = rows[rowIndex - 1]?.querySelectorAll("td")[colIndex];
+    try {
+      // Find the selected cell element
+      const rows = tableContainerRef.current.querySelectorAll("tbody tr");
+      const targetRow = rows[rowIndex - 1];
 
-    if (cellInRow) {
+      if (!targetRow) {
+        setToolbarVisible(false);
+        return;
+      }
+
+      const cells = targetRow.querySelectorAll("td");
+      const cellInRow = cells[colIndex];
+
+      if (!cellInRow) {
+        setToolbarVisible(false);
+        return;
+      }
+
       const cellRect = (cellInRow as HTMLElement).getBoundingClientRect();
       const containerRect = tableContainerRef.current.getBoundingClientRect();
 
       // Check if cell is within the visible bounds of the table container
+      // Use a small buffer to account for toolbar height
       const isVisible =
-        cellRect.top >= containerRect.top &&
+        cellRect.top >= containerRect.top - 70 &&
         cellRect.bottom <= containerRect.bottom &&
         cellRect.left >= containerRect.left &&
         cellRect.right <= containerRect.right;
 
       setToolbarVisible(isVisible);
-    } else {
+    } catch (error) {
       setToolbarVisible(false);
     }
   };
