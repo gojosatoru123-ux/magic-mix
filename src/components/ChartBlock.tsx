@@ -40,6 +40,7 @@ import {
   Radar as RadarIcon,
   Maximize2,
   Minimize2,
+  RefreshCw,
 } from "lucide-react";
 import {
   Dialog,
