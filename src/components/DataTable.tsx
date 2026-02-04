@@ -139,31 +139,54 @@ const DataTable = ({ block, onUpdate, onCreateChart }: DataTableProps) => {
         return;
       }
 
-      const containerRect = tableContainerRef.current.getBoundingClientRect();
       const cells = tableContainerRef.current.querySelectorAll("td");
-      
+      let selectedCellElement: HTMLElement | null = null;
+
       // Find the selected cell element
-      let selectedCellElement: Element | null = null;
-      cells.forEach((cell, idx) => {
-        const rowIdx = Math.floor(idx / (tableData[0]?.length || 1));
-        const colIdx = idx % (tableData[0]?.length || 1);
-        if (rowIdx + 1 === selectedCell.row && colIdx === selectedCell.col) {
-          selectedCellElement = cell;
+      let cellIndex = 0;
+      for (let rowIdx = 1; rowIdx < tableData.length; rowIdx++) {
+        for (let colIdx = 0; colIdx < tableData[0]?.length || 0; colIdx++) {
+          if (rowIdx === selectedCell.row && colIdx === selectedCell.col) {
+            selectedCellElement = cells[cellIndex] as HTMLElement;
+            break;
+          }
+          cellIndex++;
         }
-      });
+        if (selectedCellElement) break;
+      }
 
       if (selectedCellElement) {
         const cellRect = selectedCellElement.getBoundingClientRect();
-        const isVisible = cellRect.top > containerRect.top && cellRect.bottom < containerRect.bottom;
+        const containerRect = tableContainerRef.current.getBoundingClientRect();
+
+        // Check if cell is visible within the table container
+        const isVisible =
+          cellRect.top >= containerRect.top && cellRect.bottom <= containerRect.bottom;
+
         setToolbarVisible(isVisible);
+
+        if (isVisible) {
+          // Update toolbar position if cell is visible
+          setToolbarPosition({
+            top: cellRect.top - 60,
+            left: cellRect.left + cellRect.width / 2,
+          });
+        }
       }
     };
 
     const container = tableContainerRef.current;
+    window.addEventListener("scroll", handleScroll);
     if (container) {
       container.addEventListener("scroll", handleScroll);
-      return () => container.removeEventListener("scroll", handleScroll);
     }
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      if (container) {
+        container.removeEventListener("scroll", handleScroll);
+      }
+    };
   }, [selectedCell, tableData]);
 
   return (
