@@ -190,7 +190,7 @@ const DataTable = ({ block, onUpdate, onCreateChart }: DataTableProps) => {
   }, [selectedCell, tableData]);
 
   return (
-    <div className="py-3 space-y-3 relative">
+    <div className="py-3 space-y-3">
       {/* Table Container with Horizontal Scroll */}
       <div ref={tableContainerRef} className="border border-border rounded-lg overflow-auto">
         <table className="border-collapse">
