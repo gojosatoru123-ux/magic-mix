@@ -113,6 +113,8 @@ const ChartBlock = ({
   chartXAxisKey,
   chartSelectedSeries,
   chartSeriesColors,
+  linkedTableId,
+  blocks,
   chartData,
   onUpdate,
 }: ChartBlockProps) => {
