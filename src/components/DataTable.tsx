@@ -118,7 +118,7 @@ const DataTable = ({ block, onUpdate, onCreateChart }: DataTableProps) => {
     return headers.filter((_, idx) => idx > 0); // Skip first column (usually labels)
   };
 
-  // Handle cell selection and toolbar visibility
+  // Handle cell selection and show toolbar
   const handleCellClick = (e: React.MouseEvent<HTMLTableCellElement>, rowIndex: number, colIndex: number) => {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
 
@@ -126,74 +126,70 @@ const DataTable = ({ block, onUpdate, onCreateChart }: DataTableProps) => {
       top: rect.top - 60,
       left: rect.left + rect.width / 2,
     });
-    setToolbarVisible(true);
+    
     setSelectedCell({ row: rowIndex, col: colIndex });
     setOpenColorMenu(null);
+    
+    // Check visibility immediately
+    checkToolbarVisibility(rowIndex, colIndex);
   };
 
-  // Monitor scroll to hide toolbar when cell goes out of view
+  // Check if the selected cell is visible in the table container viewport
+  const checkToolbarVisibility = (rowIndex: number, colIndex: number) => {
+    if (!tableContainerRef.current) {
+      setToolbarVisible(false);
+      return;
+    }
+
+    // Find the selected cell element
+    const rows = tableContainerRef.current.querySelectorAll("tbody tr");
+    const cellInRow = rows[rowIndex - 1]?.querySelectorAll("td")[colIndex];
+
+    if (cellInRow) {
+      const cellRect = (cellInRow as HTMLElement).getBoundingClientRect();
+      const containerRect = tableContainerRef.current.getBoundingClientRect();
+
+      // Check if cell is within the visible bounds of the table container
+      const isVisible =
+        cellRect.top >= containerRect.top &&
+        cellRect.bottom <= containerRect.bottom &&
+        cellRect.left >= containerRect.left &&
+        cellRect.right <= containerRect.right;
+
+      setToolbarVisible(isVisible);
+    } else {
+      setToolbarVisible(false);
+    }
+  };
+
+  // Monitor scroll to hide/show toolbar
   useEffect(() => {
+    if (!selectedCell) return;
+
     const handleScroll = () => {
-      if (!selectedCell || !tableContainerRef.current) {
-        setToolbarVisible(false);
-        return;
-      }
-
-      const cells = tableContainerRef.current.querySelectorAll("td");
-      let selectedCellElement: HTMLElement | null = null;
-
-      // Find the selected cell element
-      let cellIndex = 0;
-      for (let rowIdx = 1; rowIdx < tableData.length; rowIdx++) {
-        for (let colIdx = 0; colIdx < tableData[0]?.length || 0; colIdx++) {
-          if (rowIdx === selectedCell.row && colIdx === selectedCell.col) {
-            selectedCellElement = cells[cellIndex] as HTMLElement;
-            break;
-          }
-          cellIndex++;
-        }
-        if (selectedCellElement) break;
-      }
-
-      if (selectedCellElement) {
-        const cellRect = selectedCellElement.getBoundingClientRect();
-        const containerRect = tableContainerRef.current.getBoundingClientRect();
-
-        // Check if cell is visible within the table container
-        const isVisible =
-          cellRect.top >= containerRect.top && cellRect.bottom <= containerRect.bottom;
-
-        setToolbarVisible(isVisible);
-
-        if (isVisible) {
-          // Update toolbar position if cell is visible
-          setToolbarPosition({
-            top: cellRect.top - 60,
-            left: cellRect.left + cellRect.width / 2,
-          });
-        }
-      }
+      checkToolbarVisibility(selectedCell.row, selectedCell.col);
     };
 
     const container = tableContainerRef.current;
-    window.addEventListener("scroll", handleScroll);
     if (container) {
       container.addEventListener("scroll", handleScroll);
+      // Also listen to window scroll
+      window.addEventListener("scroll", handleScroll);
     }
 
     return () => {
-      window.removeEventListener("scroll", handleScroll);
       if (container) {
         container.removeEventListener("scroll", handleScroll);
       }
+      window.removeEventListener("scroll", handleScroll);
     };
-  }, [selectedCell, tableData]);
+  }, [selectedCell]);
 
   return (
     <div className="py-3 space-y-3">
       {/* Table Container with Horizontal Scroll */}
       <div ref={tableContainerRef} className="border border-border rounded-lg overflow-auto">
-        <table className="border-collapse">
+        <table className="border-collapse table-auto">
           <thead>
             <tr className="bg-gradient-to-r from-primary/10 to-primary/5 sticky top-0 z-10">
               {tableData[0]?.map((header, colIndex) => (
@@ -207,7 +203,7 @@ const DataTable = ({ block, onUpdate, onCreateChart }: DataTableProps) => {
                     value={header}
                     onChange={(e) => updateCell(0, colIndex, e.target.value)}
                     style={getCellStyle(getCellFormatting(0, colIndex))}
-                    className="w-full bg-transparent outline-none font-semibold overflow-hidden text-ellipsis"
+                    className="w-full bg-transparent outline-none font-semibold"
                     placeholder="Column..."
                   />
                   {tableData[0].length > 1 && (
@@ -220,7 +216,7 @@ const DataTable = ({ block, onUpdate, onCreateChart }: DataTableProps) => {
                   )}
                 </th>
               ))}
-              <th className="w-8 sticky right-0 bg-gradient-to-r from-primary/10 to-primary/5" />
+              <th className="w-8" />
             </tr>
           </thead>
           <tbody>
@@ -247,13 +243,13 @@ const DataTable = ({ block, onUpdate, onCreateChart }: DataTableProps) => {
                         value={cell}
                         onChange={(e) => updateCell(rowIndex + 1, colIndex, e.target.value)}
                         style={getCellStyle(formatting)}
-                        className="w-full bg-transparent outline-none text-sm py-1 px-1 rounded overflow-hidden text-ellipsis"
+                        className="w-full bg-transparent outline-none text-sm py-1 px-1 rounded"
                         placeholder="..."
                       />
                     </td>
                   );
                 })}
-                <td className="opacity-0 group-hover/row:opacity-100 transition-opacity sticky right-0 bg-transparent">
+                <td className="opacity-0 group-hover/row:opacity-100 transition-opacity">
                   <button
                     onClick={() => deleteRow(rowIndex + 1)}
                     className="p-1 hover:bg-destructive/10 rounded"
@@ -267,7 +263,7 @@ const DataTable = ({ block, onUpdate, onCreateChart }: DataTableProps) => {
         </table>
       </div>
 
-      {/* Floating Cell Formatting Toolbar - Positioned relative to table */}
+      {/* Floating Cell Formatting Toolbar */}
       <AnimatePresence>
         {selectedCell && toolbarPosition && toolbarVisible && (
           <motion.div
