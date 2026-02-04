@@ -71,6 +71,8 @@ interface ChartBlockProps {
   chartXAxisKey?: string;
   chartSelectedSeries?: string[];
   chartSeriesColors?: { [key: string]: string };
+  linkedTableId?: string; // For syncing data from a linked table
+  blocks?: NoteBlock[]; // All blocks to find the linked table
   // Legacy support
   chartData?: { id: string; label: string; value: number; color: string }[];
   onUpdate: (updates: {
