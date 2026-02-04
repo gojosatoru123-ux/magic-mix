@@ -204,7 +204,7 @@ const DataTable = ({ block, onUpdate, onCreateChart }: DataTableProps) => {
     <div className="py-3 space-y-3">
       {/* Table Container with Horizontal Scroll */}
       <div ref={tableContainerRef} className="border border-border rounded-lg overflow-auto">
-        <table className="border-collapse"  style={{ tableLayout: "auto", width: "100%", minWidth: "auto" }}>
+        <table className="border-collapse" style={{ tableLayout: "auto" }}>
           <thead>
             <tr className="bg-gradient-to-r from-primary/10 to-primary/5 sticky top-0 z-10">
               {tableData[0]?.map((header, colIndex) => (
