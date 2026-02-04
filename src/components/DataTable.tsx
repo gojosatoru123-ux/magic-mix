@@ -174,9 +174,9 @@ const DataTable = ({ block, onUpdate, onCreateChart }: DataTableProps) => {
   }, [selectedCell, tableData]);
 
   return (
-    <div className="py-3 space-y-3">
+    <div className="py-3 space-y-3 relative">
       {/* Table Container with Horizontal Scroll */}
-      <div ref={tableContainerRef} className="border border-border rounded-lg overflow-auto relative">
+      <div ref={tableContainerRef} className="border border-border rounded-lg overflow-auto">
         <table className="border-collapse">
           <thead>
             <tr className="bg-gradient-to-r from-primary/10 to-primary/5 sticky top-0 z-10">
